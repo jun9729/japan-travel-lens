@@ -8,6 +8,11 @@ export const maxDuration = 30;
 type Mode = "auto" | "menu" | "sign" | "product";
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
+// 허용 모델 화이트리스트 (임의 모델 호출 방지)
+const ALLOWED_MODELS = ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"] as const;
+type AllowedModel = (typeof ALLOWED_MODELS)[number];
+const DEFAULT_MODEL: AllowedModel = "gpt-4o";
+
 const SYSTEM_PROMPT = `너는 일본을 여행 중인 한국인 관광객의 실시간 통역·해설사야.
 사용자가 보내는 사진은 일본 현지에서 찍힌 간판, 메뉴판, 상품 패키지, 표지판 중 하나일 가능성이 크다.
 
@@ -54,11 +59,18 @@ export async function POST(req: NextRequest) {
       image,
       mode = "auto",
       messages = [],
+      model: requestedModel,
     } = (await req.json()) as {
       image?: string;
       mode?: Mode;
       messages?: ChatTurn[];
+      model?: string;
     };
+
+    const model: AllowedModel =
+      requestedModel && (ALLOWED_MODELS as readonly string[]).includes(requestedModel)
+        ? (requestedModel as AllowedModel)
+        : DEFAULT_MODEL;
 
     if (!image || !image.startsWith("data:image/")) {
       return NextResponse.json(
@@ -99,7 +111,7 @@ export async function POST(req: NextRequest) {
     ];
 
     const response = await client.chat.completions.create({
-      model: "gpt-4o",
+      model,
       temperature: 0.2,
       max_tokens: 4000,
       messages: openAIMessages,

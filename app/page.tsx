@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 
 type Mode = "auto" | "menu" | "sign" | "product";
 type ChatTurn = { role: "user" | "assistant"; content: string };
+type ModelId = "gpt-4o" | "gpt-4o-mini" | "gpt-4-turbo";
 
 const MODE_LABEL: Record<Mode, string> = {
   auto: "자동 판별",
@@ -13,6 +14,25 @@ const MODE_LABEL: Record<Mode, string> = {
   sign: "간판/표지판",
   product: "상품",
 };
+
+const MODELS: {
+  id: ModelId;
+  label: string;
+  sub: string;
+  tag?: string;
+}[] = [
+  { id: "gpt-4o", label: "고정밀", sub: "GPT-4o · 정확도↑", tag: "추천" },
+  { id: "gpt-4o-mini", label: "빠름", sub: "GPT-4o-mini · 저렴·빠름" },
+  { id: "gpt-4-turbo", label: "터보", sub: "GPT-4-turbo · 구세대" },
+];
+
+const MODEL_SHORT: Record<ModelId, string> = {
+  "gpt-4o": "4o",
+  "gpt-4o-mini": "4o-mini",
+  "gpt-4-turbo": "4-turbo",
+};
+
+const MODEL_STORAGE_KEY = "jtl.model";
 
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -28,6 +48,17 @@ export default function Page() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string>("");
   const [mode, setMode] = useState<Mode>("auto");
+  const [model, setModel] = useState<ModelId>("gpt-4o");
+  const [showModelSheet, setShowModelSheet] = useState(false);
+
+  // 선택한 모델을 localStorage에 저장·복원
+  useEffect(() => {
+    const saved = localStorage.getItem(MODEL_STORAGE_KEY) as ModelId | null;
+    if (saved && MODELS.some((m) => m.id === saved)) setModel(saved);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem(MODEL_STORAGE_KEY, model);
+  }, [model]);
 
   const chatting = !!shot && messages.length > 0;
 
@@ -75,13 +106,13 @@ export default function Page() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, messages: turns, mode }),
+        body: JSON.stringify({ image, messages: turns, mode, model }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "분석에 실패했어요");
       return (data.text as string) ?? "";
     },
-    [mode]
+    [mode, model]
   );
 
   const capture = useCallback(async () => {
@@ -155,7 +186,13 @@ export default function Page() {
       <div className={`camera-wrap ${chatting ? "compact" : ""}`}>
         <div className="camera-overlay-top">
           <div className="logo">🇯🇵 여행 렌즈</div>
-          <div className="badge">{MODE_LABEL[mode]}</div>
+          <button
+            className="badge badge-btn"
+            onClick={() => setShowModelSheet(true)}
+            aria-label="모델 선택"
+          >
+            ⚙ {MODEL_SHORT[model]} · {MODE_LABEL[mode]}
+          </button>
         </div>
 
         {shot ? (
@@ -203,17 +240,34 @@ export default function Page() {
 
       <div className="result">
         {!shot && (
-          <div className="chip-row" style={{ marginBottom: 14 }}>
-            {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
-              <button
-                key={m}
-                className={`chip ${mode === m ? "active" : ""}`}
-                onClick={() => setMode(m)}
-              >
-                {MODE_LABEL[m]}
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="section-label">분류</div>
+            <div className="chip-row" style={{ marginBottom: 12 }}>
+              {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
+                <button
+                  key={m}
+                  className={`chip ${mode === m ? "active" : ""}`}
+                  onClick={() => setMode(m)}
+                >
+                  {MODE_LABEL[m]}
+                </button>
+              ))}
+            </div>
+            <div className="section-label">모델</div>
+            <div className="chip-row" style={{ marginBottom: 14 }}>
+              {MODELS.map((m) => (
+                <button
+                  key={m.id}
+                  className={`chip ${model === m.id ? "active" : ""}`}
+                  onClick={() => setModel(m.id)}
+                  title={m.sub}
+                >
+                  {m.label}
+                  {m.tag && <span className="chip-tag"> {m.tag}</span>}
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {error && <div className="err">{error}</div>}
@@ -254,6 +308,59 @@ export default function Page() {
 
         <div ref={chatEndRef} />
       </div>
+
+      {showModelSheet && (
+        <div
+          className="sheet-backdrop"
+          onClick={() => setShowModelSheet(false)}
+        >
+          <div className="sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="sheet-handle" />
+            <div className="sheet-title">모델 선택</div>
+            {MODELS.map((m) => (
+              <button
+                key={m.id}
+                className={`sheet-row ${model === m.id ? "active" : ""}`}
+                onClick={() => {
+                  setModel(m.id);
+                  setShowModelSheet(false);
+                }}
+              >
+                <div className="sheet-row-main">
+                  <span className="sheet-row-label">
+                    {m.label}
+                    {m.tag && <span className="chip-tag"> {m.tag}</span>}
+                  </span>
+                  <span className="sheet-row-sub">{m.sub}</span>
+                </div>
+                {model === m.id && <span className="sheet-check">✓</span>}
+              </button>
+            ))}
+            <div className="sheet-title" style={{ marginTop: 8 }}>
+              분류
+            </div>
+            {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
+              <button
+                key={m}
+                className={`sheet-row compact ${mode === m ? "active" : ""}`}
+                onClick={() => {
+                  setMode(m);
+                  setShowModelSheet(false);
+                }}
+              >
+                <span className="sheet-row-label">{MODE_LABEL[m]}</span>
+                {mode === m && <span className="sheet-check">✓</span>}
+              </button>
+            ))}
+            <button
+              className="sheet-close"
+              onClick={() => setShowModelSheet(false)}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
 
       {shot && messages.length > 0 && (
         <form
