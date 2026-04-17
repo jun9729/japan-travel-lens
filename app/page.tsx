@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Mode = "auto" | "menu" | "sign" | "product";
+type ChatTurn = { role: "user" | "assistant"; content: string };
 
 const MODE_LABEL: Record<Mode, string> = {
   auto: "자동 판별",
@@ -15,13 +16,18 @@ export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const [ready, setReady] = useState(false);
   const [shot, setShot] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<string>("");
+  const [messages, setMessages] = useState<ChatTurn[]>([]);
+  const [input, setInput] = useState("");
   const [error, setError] = useState<string>("");
   const [mode, setMode] = useState<Mode>("auto");
+
+  const chatting = !!shot && messages.length > 0;
 
   const startCamera = useCallback(async () => {
     setError("");
@@ -44,8 +50,7 @@ export default function Page() {
       }
       setReady(true);
     } catch (e: unknown) {
-      const msg =
-        e instanceof Error ? e.message : "카메라를 열 수 없습니다.";
+      const msg = e instanceof Error ? e.message : "카메라를 열 수 없습니다.";
       setError(
         `카메라 접근 실패: ${msg}\n브라우저 주소창 옆 자물쇠 아이콘에서 카메라 권한을 허용해 주세요.`
       );
@@ -59,6 +64,24 @@ export default function Page() {
     };
   }, [startCamera]);
 
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, loading]);
+
+  const callAPI = useCallback(
+    async (image: string, turns: ChatTurn[]) => {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image, messages: turns, mode }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "분석에 실패했어요");
+      return (data.text as string) ?? "";
+    },
+    [mode]
+  );
+
   const capture = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
@@ -66,7 +89,6 @@ export default function Page() {
 
     const w = video.videoWidth || 1280;
     const h = video.videoHeight || 720;
-    // 긴 변 1280 으로 다운스케일 (업로드 속도 & 토큰 절약)
     const maxSide = 1280;
     const scale = Math.min(1, maxSide / Math.max(w, h));
     canvas.width = Math.round(w * scale);
@@ -75,31 +97,26 @@ export default function Page() {
     if (!ctx) return;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+
     setShot(dataUrl);
-    setResult("");
+    setMessages([]);
     setError("");
     setLoading(true);
 
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: dataUrl, mode }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "분석에 실패했어요");
-      setResult(data.text ?? "");
+      const text = await callAPI(dataUrl, []);
+      setMessages([{ role: "assistant", content: text }]);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setError(msg);
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, [mode]);
+  }, [callAPI]);
 
   const retake = useCallback(() => {
     setShot(null);
-    setResult("");
+    setMessages([]);
+    setInput("");
     setError("");
     if (videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
@@ -109,9 +126,31 @@ export default function Page() {
     }
   }, [startCamera]);
 
+  const sendMessage = useCallback(async () => {
+    const text = input.trim();
+    if (!text || !shot || loading) return;
+    const nextTurns: ChatTurn[] = [
+      ...messages,
+      { role: "user", content: text },
+    ];
+    setMessages(nextTurns);
+    setInput("");
+    setError("");
+    setLoading(true);
+    try {
+      const reply = await callAPI(shot, nextTurns);
+      setMessages([...nextTurns, { role: "assistant", content: reply }]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [callAPI, input, loading, messages, shot]);
+
   return (
-    <main className="app">
-      <div className="camera-wrap">
+    <main className={`app ${chatting ? "chatting" : ""}`}>
+      <div className={`camera-wrap ${chatting ? "compact" : ""}`}>
         <div className="camera-overlay-top">
           <div className="logo">🇯🇵 여행 렌즈</div>
           <div className="badge">{MODE_LABEL[mode]}</div>
@@ -161,46 +200,79 @@ export default function Page() {
       </div>
 
       <div className="result">
-        <div className="chip-row" style={{ marginBottom: 14 }}>
-          {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
-            <button
-              key={m}
-              className={`chip ${mode === m ? "active" : ""}`}
-              onClick={() => setMode(m)}
-            >
-              {MODE_LABEL[m]}
-            </button>
-          ))}
-        </div>
+        {!shot && (
+          <div className="chip-row" style={{ marginBottom: 14 }}>
+            {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
+              <button
+                key={m}
+                className={`chip ${mode === m ? "active" : ""}`}
+                onClick={() => setMode(m)}
+              >
+                {MODE_LABEL[m]}
+              </button>
+            ))}
+          </div>
+        )}
 
         {error && <div className="err">{error}</div>}
 
-        {loading && (
-          <div className="result-card">
-            <span className="loading">
-              AI가 사진을 읽는 중
-              <span className="dot" />
-              <span className="dot" />
-              <span className="dot" />
-            </span>
-          </div>
-        )}
-
-        {!loading && result && (
-          <>
-            <h2>설명</h2>
-            <div className="result-card">{result}</div>
-          </>
-        )}
-
-        {!loading && !result && !error && (
+        {messages.length === 0 && !loading && !error && (
           <div className="hint">
             아래 셔터를 눌러 일본어가 적힌 간판·메뉴판·상품을 찍어보세요.
             <br />
-            AI가 무엇인지 한국어로 설명해 줍니다.
+            AI가 한국어로 설명하고, 이어서 자유롭게 질문할 수 있어요.
           </div>
         )}
+
+        {messages.map((m, i) => (
+          <div key={i} className={`bubble-row ${m.role}`}>
+            <div className={`bubble ${m.role}`}>{m.content}</div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="bubble-row assistant">
+            <div className="bubble assistant">
+              <span className="loading">
+                <span className="dot" />
+                <span className="dot" />
+                <span className="dot" />
+              </span>
+            </div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
       </div>
+
+      {shot && messages.length > 0 && (
+        <form
+          className="composer"
+          onSubmit={(e) => {
+            e.preventDefault();
+            sendMessage();
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="text"
+            placeholder="이어서 물어보기 (예: 맵기 어느 정도야?)"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            disabled={loading}
+            enterKeyHint="send"
+            autoComplete="off"
+          />
+          <button
+            type="submit"
+            className="send-btn"
+            disabled={loading || !input.trim()}
+            aria-label="보내기"
+          >
+            ↑
+          </button>
+        </form>
+      )}
     </main>
   );
 }
