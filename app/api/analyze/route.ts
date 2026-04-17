@@ -98,12 +98,10 @@ export async function POST(req: NextRequest) {
       })),
     ];
 
-    // 메뉴판일 땐 OCR 정확도 & 긴 표 대응을 위해 gpt-4o + 넉넉한 토큰을 쓴다.
-    const isMenu = mode === "menu";
     const response = await client.chat.completions.create({
-      model: isMenu ? "gpt-4o" : "gpt-4o-mini",
-      temperature: isMenu ? 0.2 : 0.4,
-      max_tokens: isMenu ? 3000 : 800,
+      model: "gpt-4o",
+      temperature: 0.2,
+      max_tokens: 4000,
       messages: openAIMessages,
     });
 
