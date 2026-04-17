@@ -167,6 +167,66 @@ input {
   border: 1px solid rgba(255,255,255,0.06);
   border-top-left-radius: 6px;
 }
+
+/* 마크다운 렌더링 (assistant 버블 내부) */
+.bubble.assistant p { margin: 0 0 8px 0; }
+.bubble.assistant p:last-child { margin-bottom: 0; }
+.bubble.assistant h1,
+.bubble.assistant h2,
+.bubble.assistant h3 {
+  font-size: 15px;
+  font-weight: 700;
+  margin: 10px 0 6px 0;
+  color: #fff;
+}
+.bubble.assistant ul,
+.bubble.assistant ol {
+  padding-left: 20px;
+  margin: 4px 0 8px 0;
+}
+.bubble.assistant li { margin: 2px 0; }
+.bubble.assistant strong { color: #fff; font-weight: 600; }
+.bubble.assistant code {
+  background: rgba(255,255,255,0.08);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.bubble.assistant hr {
+  border: none;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  margin: 10px 0;
+}
+.bubble.assistant .table-wrap,
+.bubble.assistant table {
+  width: 100%;
+  max-width: 100%;
+}
+.bubble.assistant table {
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 13px;
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.bubble.assistant thead {
+  background: rgba(255,255,255,0.05);
+}
+.bubble.assistant th,
+.bubble.assistant td {
+  padding: 6px 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  text-align: left;
+  vertical-align: top;
+}
+.bubble.assistant th {
+  font-weight: 600;
+  color: #fff;
+}
+.bubble.assistant td:last-child {
+  white-space: nowrap;
+}
 .bubble.user {
   background: #2b6cff;
   color: #fff;
