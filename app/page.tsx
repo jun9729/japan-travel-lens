@@ -7,11 +7,9 @@ import remarkGfm from "remark-gfm";
 type Mode = "auto" | "menu" | "sign" | "product";
 type ChatTurn = { role: "user" | "assistant"; content: string };
 type ModelId =
-  | "gpt-5.4-pro"
   | "gpt-5.4"
   | "gpt-5.4-mini"
   | "gpt-5.1"
-  | "gpt-5"
   | "gpt-4o"
   | "gpt-4o-mini";
 
@@ -28,21 +26,17 @@ const MODELS: {
   sub: string;
   tag?: string;
 }[] = [
-  { id: "gpt-5.4-pro", label: "GPT-5.4 Pro", sub: "최고 성능 · 가장 비쌈", tag: "최상" },
-  { id: "gpt-5.4", label: "GPT-5.4", sub: "최신 플래그십 · 균형", tag: "기본" },
+  { id: "gpt-5.4", label: "GPT-5.4", sub: "최신 플래그십 · 최고 품질", tag: "추천" },
   { id: "gpt-5.4-mini", label: "GPT-5.4 mini", sub: "최신 · 빠름 · 저렴" },
   { id: "gpt-5.1", label: "GPT-5.1", sub: "이전 세대 안정판" },
-  { id: "gpt-5", label: "GPT-5", sub: "GPT-5 기본" },
   { id: "gpt-4o", label: "GPT-4o", sub: "검증된 4세대 플래그십" },
   { id: "gpt-4o-mini", label: "GPT-4o mini", sub: "가장 저렴" },
 ];
 
 const MODEL_SHORT: Record<ModelId, string> = {
-  "gpt-5.4-pro": "5.4 Pro",
   "gpt-5.4": "5.4",
   "gpt-5.4-mini": "5.4m",
   "gpt-5.1": "5.1",
-  "gpt-5": "5",
   "gpt-4o": "4o",
   "gpt-4o-mini": "4o-m",
 };

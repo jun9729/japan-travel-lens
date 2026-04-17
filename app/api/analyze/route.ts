@@ -3,18 +3,16 @@ import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 type Mode = "auto" | "menu" | "sign" | "product";
 type ChatTurn = { role: "user" | "assistant"; content: string };
 
 // 허용 모델 화이트리스트 (임의 모델 호출 방지)
 const ALLOWED_MODELS = [
-  "gpt-5.4-pro",
   "gpt-5.4",
   "gpt-5.4-mini",
   "gpt-5.1",
-  "gpt-5",
   "gpt-4o",
   "gpt-4o-mini",
 ] as const;
