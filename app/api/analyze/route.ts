@@ -118,11 +118,17 @@ export async function POST(req: NextRequest) {
       })),
     ];
 
+    // gpt-5.x 와 o-series 는 파라미터 스키마가 달라서 분기 처리한다.
+    // - max_tokens -> max_completion_tokens
+    // - temperature 미지원 (기본 1 고정)
+    const isNextGen = model.startsWith("gpt-5") || /^o\d/.test(model);
+
     const response = await client.chat.completions.create({
       model,
-      temperature: 0.2,
-      max_tokens: 4000,
       messages: openAIMessages,
+      ...(isNextGen
+        ? { max_completion_tokens: 4000 }
+        : { max_tokens: 4000, temperature: 0.2 }),
     });
 
     const text =
