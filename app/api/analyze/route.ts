@@ -8,14 +8,22 @@ export const maxDuration = 60;
 
 type Mode = "auto" | "menu" | "sign" | "product";
 type ChatTurn = { role: "user" | "assistant"; content: string };
+type UILang = "ko" | "en" | "ja" | "zh";
 
 const MODEL = "gpt-4o"; // 앱 전체 고정
+
+const REPLY_LANG: Record<UILang, string> = {
+  ko: "한국어",
+  en: "English",
+  ja: "日本語",
+  zh: "中文（简体）",
+};
 
 const SYSTEM_PROMPT = `너는 해외 여행 중인 한국인 관광객의 실시간 통역·해설사야.
 사용자가 보내는 사진은 외국 현지에서 찍힌 간판, 메뉴판, 상품 패키지, 표지판, 안내문 중 하나일 가능성이 크다.
 언어는 일본어·중국어·영어·태국어·베트남어·스페인어·프랑스어 등 어떤 외국어도 올 수 있다.
 
-반드시 한국어로 답하고, 아래 원칙을 지켜라:
+반드시 {REPLY_LANG} 로 답하고, 아래 원칙을 지켜라:
 
 [ 첫 답변 원칙 (사진을 처음 받았을 때) ]
 1) 먼저 한 줄로 분류한다. (예: "🍜 일본 라멘집 메뉴판", "🇹🇭 태국 식당 간판")
@@ -59,11 +67,16 @@ export async function POST(req: NextRequest) {
       image,
       mode = "auto",
       messages = [],
+      uiLang = "ko",
     } = (await req.json()) as {
       image?: string;
       mode?: Mode;
       messages?: ChatTurn[];
+      uiLang?: UILang;
     };
+
+    const replyLang = REPLY_LANG[uiLang] ?? REPLY_LANG.ko;
+    const systemPrompt = SYSTEM_PROMPT.replace("{REPLY_LANG}", replyLang);
 
     if (!image || !image.startsWith("data:image/")) {
       return NextResponse.json(
@@ -97,7 +110,7 @@ export async function POST(req: NextRequest) {
 
     const client = new OpenAI({ apiKey });
     const openAIMessages: ChatCompletionMessageParam[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: [

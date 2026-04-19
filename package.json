@@ -14,7 +14,8 @@
     "react-dom": "^19.0.0",
     "react-markdown": "^9.0.1",
     "remark-gfm": "^4.0.0",
-    "stripe": "^17.3.0"
+    "stripe": "^17.3.0",
+    "@paypal/react-paypal-js": "^8.8.3"
   },
   "devDependencies": {
     "@types/node": "^22",
