@@ -845,15 +845,6 @@ export default function Page() {
                     </div>
                   </div>
                 )}
-
-                <button className="payment-btn kakao-btn" disabled>
-                  <span className="pay-icon">💛</span>
-                  <div className="pay-label">
-                    <span>{t.payWithKakao}</span>
-                    <span className="coming-soon-badge">{t.comingSoon}</span>
-                  </div>
-                </button>
-                <div className="kakao-note">{t.kakaoNote}</div>
               </>
             )}
 
