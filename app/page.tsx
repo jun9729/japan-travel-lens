@@ -6,12 +6,14 @@ import remarkGfm from "remark-gfm";
 
 type Mode = "auto" | "menu" | "sign" | "product";
 type ChatTurn = { role: "user" | "assistant"; content: string };
-type ModelId =
-  | "gpt-5.4"
-  | "gpt-5.4-mini"
-  | "gpt-5.1"
-  | "gpt-4o"
-  | "gpt-4o-mini";
+
+type QuotaInfo = {
+  count: number;
+  limit: number;
+  remaining: number;
+  isPaid: boolean;
+  paidUntil?: number;
+};
 
 const MODE_LABEL: Record<Mode, string> = {
   auto: "자동 판별",
@@ -19,29 +21,6 @@ const MODE_LABEL: Record<Mode, string> = {
   sign: "간판/표지판",
   product: "상품",
 };
-
-const MODELS: {
-  id: ModelId;
-  label: string;
-  sub: string;
-  tag?: string;
-}[] = [
-  { id: "gpt-5.4", label: "GPT-5.4", sub: "최신 플래그십 · 최고 품질", tag: "추천" },
-  { id: "gpt-5.4-mini", label: "GPT-5.4 mini", sub: "최신 · 빠름 · 저렴" },
-  { id: "gpt-5.1", label: "GPT-5.1", sub: "이전 세대 안정판" },
-  { id: "gpt-4o", label: "GPT-4o", sub: "검증된 4세대 플래그십" },
-  { id: "gpt-4o-mini", label: "GPT-4o mini", sub: "가장 저렴" },
-];
-
-const MODEL_SHORT: Record<ModelId, string> = {
-  "gpt-5.4": "5.4",
-  "gpt-5.4-mini": "5.4m",
-  "gpt-5.1": "5.1",
-  "gpt-4o": "4o",
-  "gpt-4o-mini": "4o-m",
-};
-
-const MODEL_STORAGE_KEY = "jtl.model";
 
 export default function Page() {
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -57,20 +36,14 @@ export default function Page() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string>("");
   const [mode, setMode] = useState<Mode>("auto");
-  const [model, setModel] = useState<ModelId>("gpt-5.4");
-  const [showModelSheet, setShowModelSheet] = useState(false);
-
-  // 선택한 모델을 localStorage에 저장·복원
-  useEffect(() => {
-    const saved = localStorage.getItem(MODEL_STORAGE_KEY) as ModelId | null;
-    if (saved && MODELS.some((m) => m.id === saved)) setModel(saved);
-  }, []);
-  useEffect(() => {
-    localStorage.setItem(MODEL_STORAGE_KEY, model);
-  }, [model]);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [quota, setQuota] = useState<QuotaInfo | null>(null);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [toast, setToast] = useState<string>("");
 
   const chatting = !!shot && messages.length > 0;
 
+  // 카메라 시작
   const startCamera = useCallback(async () => {
     setError("");
     try {
@@ -94,7 +67,7 @@ export default function Page() {
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "카메라를 열 수 없습니다.";
       setError(
-        `카메라 접근 실패: ${msg}\n브라우저 주소창 옆 자물쇠 아이콘에서 카메라 권한을 허용해 주세요.`
+        `카메라 접근 실패: ${msg}\n주소창 자물쇠 아이콘에서 카메라 권한을 허용해 주세요.`
       );
     }
   }, []);
@@ -106,6 +79,31 @@ export default function Page() {
     };
   }, [startCamera]);
 
+  // 쿼터 초기 로드 + 결제 complete 핸들링
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const paid = params.get("paid");
+    if (paid === "success") {
+      setToast("✅ 결제 완료! 오늘 24시간 무제한 이용 가능해요.");
+    } else if (paid === "cancelled") {
+      setToast("결제를 취소했어요.");
+    } else if (paid === "unpaid" || paid === "error" || paid === "missing") {
+      setToast("결제 확인에 실패했어요. 문제 계속되면 알려주세요.");
+    }
+    if (paid) {
+      // URL clean
+      const url = new URL(window.location.href);
+      url.searchParams.delete("paid");
+      window.history.replaceState({}, "", url.toString());
+      setTimeout(() => setToast(""), 4000);
+    }
+
+    fetch("/api/quota")
+      .then((r) => r.json())
+      .then((d) => d.quota && setQuota(d.quota))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading]);
@@ -115,13 +113,19 @@ export default function Page() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, messages: turns, mode, model }),
+        body: JSON.stringify({ image, messages: turns, mode }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "분석에 실패했어요");
+      if (data.quota) setQuota(data.quota);
+      if (!res.ok) {
+        const err = new Error(data?.error || "분석에 실패했어요");
+        (err as Error & { needUpgrade?: boolean }).needUpgrade =
+          !!data.needUpgrade;
+        throw err;
+      }
       return (data.text as string) ?? "";
     },
-    [mode, model]
+    [mode]
   );
 
   const capture = useCallback(async () => {
@@ -190,17 +194,42 @@ export default function Page() {
     }
   }, [callAPI, input, loading, messages, shot]);
 
+  const upgrade = useCallback(async () => {
+    setCheckingOut(true);
+    setError("");
+    try {
+      const res = await fetch("/api/checkout", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || "결제 세션 생성 실패");
+      if (data.url) window.location.href = data.url;
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : String(e));
+      setCheckingOut(false);
+    }
+  }, []);
+
+  const quotaLabel = (() => {
+    if (!quota) return "…";
+    if (quota.isPaid) return "♾ 무제한";
+    return `${quota.count}/${quota.limit}`;
+  })();
+
+  const nearLimit =
+    quota && !quota.isPaid && quota.count >= quota.limit - 2; // 남은 2회 이하
+
   return (
     <main className={`app ${chatting ? "chatting" : ""}`}>
       <div className={`camera-wrap ${chatting ? "compact" : ""}`}>
         <div className="camera-overlay-top">
-          <div className="logo">🇯🇵 여행 렌즈</div>
+          <div className="logo">🌏 여행 렌즈</div>
           <button
-            className="badge badge-btn"
-            onClick={() => setShowModelSheet(true)}
-            aria-label="모델 선택"
+            className={`badge badge-btn ${quota?.isPaid ? "paid" : ""} ${
+              nearLimit ? "warn" : ""
+            }`}
+            onClick={() => setSheetOpen(true)}
+            aria-label="설정"
           >
-            ⚙ {MODEL_SHORT[model]} · {MODE_LABEL[mode]}
+            {quota?.isPaid ? "♾" : "📸"} {quotaLabel} · {MODE_LABEL[mode]}
           </button>
         </div>
 
@@ -251,7 +280,7 @@ export default function Page() {
         {!shot && (
           <>
             <div className="section-label">분류</div>
-            <div className="chip-row" style={{ marginBottom: 12 }}>
+            <div className="chip-row" style={{ marginBottom: 14 }}>
               {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
                 <button
                   key={m}
@@ -262,20 +291,6 @@ export default function Page() {
                 </button>
               ))}
             </div>
-            <div className="section-label">모델</div>
-            <div className="chip-row" style={{ marginBottom: 14 }}>
-              {MODELS.map((m) => (
-                <button
-                  key={m.id}
-                  className={`chip ${model === m.id ? "active" : ""}`}
-                  onClick={() => setModel(m.id)}
-                  title={m.sub}
-                >
-                  {m.label}
-                  {m.tag && <span className="chip-tag"> {m.tag}</span>}
-                </button>
-              ))}
-            </div>
           </>
         )}
 
@@ -283,9 +298,13 @@ export default function Page() {
 
         {messages.length === 0 && !loading && !error && (
           <div className="hint">
-            아래 셔터를 눌러 일본어가 적힌 간판·메뉴판·상품을 찍어보세요.
+            아래 셔터를 눌러 외국어 간판·메뉴판·상품을 찍어보세요.
             <br />
             AI가 한국어로 설명하고, 이어서 자유롭게 질문할 수 있어요.
+            <br />
+            <span style={{ color: "#6a6a72", fontSize: 12 }}>
+              일본어·중국어·영어·태국어·베트남어·스페인어 등 지원
+            </span>
           </div>
         )}
 
@@ -318,34 +337,58 @@ export default function Page() {
         <div ref={chatEndRef} />
       </div>
 
-      {showModelSheet && (
-        <div
-          className="sheet-backdrop"
-          onClick={() => setShowModelSheet(false)}
-        >
+      {toast && <div className="toast">{toast}</div>}
+
+      {sheetOpen && (
+        <div className="sheet-backdrop" onClick={() => setSheetOpen(false)}>
           <div className="sheet" onClick={(e) => e.stopPropagation()}>
             <div className="sheet-handle" />
-            <div className="sheet-title">모델 선택</div>
-            {MODELS.map((m) => (
-              <button
-                key={m.id}
-                className={`sheet-row ${model === m.id ? "active" : ""}`}
-                onClick={() => {
-                  setModel(m.id);
-                  setShowModelSheet(false);
-                }}
-              >
-                <div className="sheet-row-main">
-                  <span className="sheet-row-label">
-                    {m.label}
-                    {m.tag && <span className="chip-tag"> {m.tag}</span>}
-                  </span>
-                  <span className="sheet-row-sub">{m.sub}</span>
-                </div>
-                {model === m.id && <span className="sheet-check">✓</span>}
-              </button>
-            ))}
-            <div className="sheet-title" style={{ marginTop: 8 }}>
+
+            {/* 이용량 / 업그레이드 */}
+            <div className="sheet-title">오늘 이용량</div>
+            <div className="quota-card">
+              {quota?.isPaid ? (
+                <>
+                  <div className="quota-headline">♾ 하루 무제한</div>
+                  <div className="quota-sub">
+                    {quota.paidUntil
+                      ? `${new Date(quota.paidUntil).toLocaleString("ko-KR", {
+                          month: "2-digit",
+                          day: "2-digit",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}까지 유효`
+                      : ""}
+                  </div>
+                </>
+              ) : quota ? (
+                <>
+                  <div className="quota-headline">
+                    {quota.count} / {quota.limit} 회
+                  </div>
+                  <div className="quota-sub">
+                    {quota.remaining > 0
+                      ? `오늘 ${quota.remaining}회 남았어요`
+                      : "오늘 무료 횟수를 모두 썼어요"}
+                  </div>
+                  <button
+                    className="upgrade-btn"
+                    onClick={upgrade}
+                    disabled={checkingOut}
+                  >
+                    {checkingOut ? "결제창 여는 중..." : "하루 무제한 $1 결제"}
+                  </button>
+                  <div className="quota-note">
+                    결제 시각부터 24시간 동안 제한 없이 사용할 수 있어요.
+                  </div>
+                </>
+              ) : (
+                <div className="quota-sub">불러오는 중...</div>
+              )}
+            </div>
+
+            {/* 분류 */}
+            <div className="sheet-title" style={{ marginTop: 16 }}>
               분류
             </div>
             {(Object.keys(MODE_LABEL) as Mode[]).map((m) => (
@@ -354,16 +397,17 @@ export default function Page() {
                 className={`sheet-row compact ${mode === m ? "active" : ""}`}
                 onClick={() => {
                   setMode(m);
-                  setShowModelSheet(false);
+                  setSheetOpen(false);
                 }}
               >
                 <span className="sheet-row-label">{MODE_LABEL[m]}</span>
                 {mode === m && <span className="sheet-check">✓</span>}
               </button>
             ))}
+
             <button
               className="sheet-close"
-              onClick={() => setShowModelSheet(false)}
+              onClick={() => setSheetOpen(false)}
             >
               닫기
             </button>
@@ -382,7 +426,7 @@ export default function Page() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="이어서 물어보기 (예: 맵기 어느 정도야?)"
+            placeholder="이어서 물어보기 (예: 맵기 어때?)"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}

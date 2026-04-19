@@ -98,6 +98,76 @@ input {
 .badge-btn:active {
   background: rgba(255,255,255,0.22);
 }
+.badge-btn.paid {
+  background: linear-gradient(135deg, rgba(43,108,255,0.35), rgba(122,60,255,0.35));
+  border-color: rgba(122,60,255,0.5);
+}
+.badge-btn.warn {
+  background: rgba(255,180,60,0.18);
+  border-color: rgba(255,180,60,0.45);
+  color: #ffd18a;
+}
+
+/* 쿼터 / 결제 카드 */
+.quota-card {
+  background: #1c1c24;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 6px;
+}
+.quota-headline {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+}
+.quota-sub {
+  font-size: 13px;
+  color: #9a9aa2;
+  margin-bottom: 12px;
+}
+.quota-note {
+  font-size: 11px;
+  color: #6a6a72;
+  margin-top: 10px;
+  line-height: 1.5;
+}
+.upgrade-btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2b6cff 0%, #7a3cff 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 15px;
+  transition: transform 0.08s, opacity 0.2s;
+}
+.upgrade-btn:active { transform: scale(0.98); }
+.upgrade-btn:disabled { opacity: 0.6; }
+
+/* 토스트 */
+.toast {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(28,28,36,0.96);
+  backdrop-filter: blur(12px);
+  color: #fff;
+  font-size: 14px;
+  padding: 12px 18px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.1);
+  z-index: 30;
+  max-width: 90%;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  animation: toast-in 0.3s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes toast-in {
+  from { transform: translate(-50%, -20px); opacity: 0; }
+  to   { transform: translate(-50%, 0); opacity: 1; }
+}
 
 .section-label {
   font-size: 11px;
