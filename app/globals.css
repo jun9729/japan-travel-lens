@@ -78,6 +78,88 @@ input  { font-family: inherit; }
 .cam-brackets span:nth-child(3) { bottom: 18%; left: 10%; border-bottom-width: 2.5px; border-left-width: 2.5px; border-radius: 0 0 0 2px; }
 .cam-brackets span:nth-child(4) { bottom: 18%; right: 10%; border-bottom-width: 2.5px; border-right-width: 2.5px; border-radius: 0 0 2px 0; }
 
+/* ── 카메라 컨트롤 ───────────────────────────── */
+
+/* 초점 링 (탭한 위치에 펄스) */
+.focus-ring {
+  position: absolute;
+  width: 76px; height: 76px;
+  border: 2px solid #ffd166;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 3;
+  animation: focus-pulse 0.8s ease forwards;
+  box-shadow: 0 0 14px rgba(255,209,102,0.4);
+}
+@keyframes focus-pulse {
+  0%   { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+  35%  { transform: translate(-50%, -50%) scale(1);   opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(0.95); opacity: 0.9; }
+  100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+}
+
+/* 줌 프리셋 칩 (카메라 하단 중앙) */
+.zoom-chips {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  padding: 5px;
+  border-radius: 999px;
+  background: rgba(0,0,0,0.42);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 3;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.zoom-chip {
+  min-width: 38px;
+  height: 32px;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 0 11px;
+  border-radius: 999px;
+  color: #fff;
+  transition: background 0.15s, color 0.15s, transform 0.08s;
+}
+.zoom-chip:active { transform: scale(0.94); }
+.zoom-chip.active {
+  background: #ffd166;
+  color: #0a0a0f;
+}
+
+/* 카메라 우측 컨트롤 (손전등 등) */
+.cam-controls-right {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 3;
+}
+.cam-btn {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff;
+  font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, transform 0.08s;
+}
+.cam-btn:active { transform: scale(0.92); }
+.cam-btn.on {
+  background: #ffd166;
+  color: #0a0a0f;
+  border-color: #ffd166;
+}
+
 /* 촬영 플래시 */
 .flash {
   position: fixed;
@@ -467,9 +549,16 @@ input  { font-family: inherit; }
 }
 .pay-price { font-size: 13px; color: #9a9aa5; }
 .pay-note  { font-size: 11px; color: #5a5a65; }
-.stripe-btn { border-color: rgba(43,108,255,0.3); }
 .kakao-btn  { border-color: rgba(255,220,0,0.2); }
 .paypal-wrap { margin-bottom: 10px; }
+.paypal-placeholder {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; margin-bottom: 10px;
+  border-radius: 14px;
+  border: 1px dashed rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.03);
+  opacity: 0.7;
+}
 .coming-soon-badge {
   display: inline-block; font-size: 11px;
   padding: 2px 8px; border-radius: 6px;
