@@ -3,7 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import {
+  PayPalScriptProvider,
+  PayPalButtons,
+  usePayPalScriptReducer,
+  DISPATCH_ACTION,
+} from "@paypal/react-paypal-js";
 import { TRANSLATIONS, LOCALE_LABELS, type Locale } from "@/lib/locale";
 
 type Mode = "auto" | "menu" | "sign" | "product";
@@ -66,7 +71,50 @@ declare global {
   }
 }
 
+/**
+ * PayPal SDK 를 한 번만 로드해서 재사용.
+ * - Provider 는 최상단에 항상 마운트 (deferLoading 으로 초기엔 로드 안 함)
+ * - paypalId 가 도착하면 resetOptions 로 SDK 로딩 트리거
+ * - 이후 업그레이드 시트를 열면 PayPalButtons 가 이미 준비된 SDK 사용 → 즉시 반응
+ */
+function PayPalBootstrap({ clientId }: { clientId: string | null }) {
+  const [, dispatch] = usePayPalScriptReducer();
+  useEffect(() => {
+    if (!clientId) return;
+    dispatch({
+      type: DISPATCH_ACTION.RESET_OPTIONS,
+      value: {
+        clientId,
+        currency: "USD",
+        components: "buttons",
+        intent: "capture",
+      },
+    });
+  }, [clientId, dispatch]);
+  return null;
+}
+
 export default function Page() {
+  const [ppId, setPpId] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/paypal/clientid")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.clientId && setPpId(d.clientId))
+      .catch(() => {});
+  }, []);
+
+  return (
+    <PayPalScriptProvider
+      options={{ clientId: "placeholder", components: "buttons" }}
+      deferLoading
+    >
+      <PayPalBootstrap clientId={ppId} />
+      <PageInner paypalId={ppId} />
+    </PayPalScriptProvider>
+  );
+}
+
+function PageInner({ paypalId }: { paypalId: string | null }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -90,7 +138,6 @@ export default function Page() {
   const [history, setHistory] = useState<ScanRecord[]>([]);
   const [toast, setToast] = useState("");
   const [installable, setInstallable] = useState(false);
-  const [paypalId, setPaypalId] = useState<string | null>(null);
 
   // 카메라 제어
   const [zoomCaps, setZoomCaps] = useState<ZoomCaps | null>(null);
@@ -121,10 +168,6 @@ export default function Page() {
     fetch("/api/price")
       .then((r) => r.json())
       .then((d) => d.price?.display && setPrice(d.price.display))
-      .catch(() => {});
-    fetch("/api/paypal/clientid")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d?.clientId && setPaypalId(d.clientId))
       .catch(() => {});
 
     const beforeInstall = (e: Event) => {
@@ -811,28 +854,26 @@ export default function Page() {
 
                 {paypalId ? (
                   <div className="paypal-wrap">
-                    <PayPalScriptProvider options={{ clientId: paypalId }}>
-                      <PayPalButtons
-                        style={{
-                          layout: "vertical",
-                          color: "gold",
-                          shape: "rect",
-                          label: "pay",
-                          height: 48,
-                        }}
-                        createOrder={async () => {
-                          const r = await fetch("/api/paypal/create", {
-                            method: "POST",
-                          });
-                          const d = await r.json();
-                          if (!d.orderID) throw new Error(d.error);
-                          return d.orderID as string;
-                        }}
-                        onApprove={async (data) => {
-                          await afterPayPalCapture(data.orderID ?? "");
-                        }}
-                      />
-                    </PayPalScriptProvider>
+                    <PayPalButtons
+                      style={{
+                        layout: "vertical",
+                        color: "gold",
+                        shape: "rect",
+                        label: "pay",
+                        height: 48,
+                      }}
+                      createOrder={async () => {
+                        const r = await fetch("/api/paypal/create", {
+                          method: "POST",
+                        });
+                        const d = await r.json();
+                        if (!d.orderID) throw new Error(d.error);
+                        return d.orderID as string;
+                      }}
+                      onApprove={async (data) => {
+                        await afterPayPalCapture(data.orderID ?? "");
+                      }}
+                    />
                   </div>
                 ) : (
                   <div className="paypal-placeholder">
