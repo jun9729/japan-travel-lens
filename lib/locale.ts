@@ -71,6 +71,16 @@ type T = {
   loadingRead: string;
   loadingWrite: string;
   loadingAlmost: string;
+  // 분류 설명
+  modeAutoDesc: string;
+  modeMenuDesc: string;
+  modeSignDesc: string;
+  modeProductDesc: string;
+  // 히스토리 삭제 / 오프라인
+  historyDelete: string;
+  historyClearAll: string;
+  offline: string;
+  grantCamera: string;
 };
 
 const ko: T = {
@@ -133,6 +143,14 @@ const ko: T = {
   loadingRead: "AI가 읽고 있어요...",
   loadingWrite: "해석을 작성하고 있어요...",
   loadingAlmost: "거의 다 됐어요...",
+  modeAutoDesc: "AI가 알아서 판별",
+  modeMenuDesc: "모든 메뉴를 표로 정리",
+  modeSignDesc: "가게·시설 종류 확인",
+  modeProductDesc: "원재료·사용법 확인",
+  historyDelete: "삭제",
+  historyClearAll: "전체 삭제",
+  offline: "인터넷 연결 없음",
+  grantCamera: "카메라 권한 허용 후 다시 시도",
 };
 
 const en: T = {
@@ -195,6 +213,14 @@ const en: T = {
   loadingRead: "AI is reading...",
   loadingWrite: "Writing explanation...",
   loadingAlmost: "Almost done...",
+  modeAutoDesc: "AI detects the type",
+  modeMenuDesc: "All items as a table",
+  modeSignDesc: "What kind of place it is",
+  modeProductDesc: "Ingredients & usage",
+  historyDelete: "Delete",
+  historyClearAll: "Clear all",
+  offline: "No internet connection",
+  grantCamera: "Grant camera permission and retry",
 };
 
 const ja: T = {
@@ -257,6 +283,14 @@ const ja: T = {
   loadingRead: "AIが読んでいます...",
   loadingWrite: "解説を作成中...",
   loadingAlmost: "もうすぐです...",
+  modeAutoDesc: "AIが種類を自動判別",
+  modeMenuDesc: "全項目を表に",
+  modeSignDesc: "店舗・施設の種類",
+  modeProductDesc: "原材料・使用方法",
+  historyDelete: "削除",
+  historyClearAll: "すべて削除",
+  offline: "インターネット接続なし",
+  grantCamera: "カメラ許可後、再試行してください",
 };
 
 const zh: T = {
@@ -319,6 +353,14 @@ const zh: T = {
   loadingRead: "AI正在阅读...",
   loadingWrite: "正在撰写解释...",
   loadingAlmost: "即将完成...",
+  modeAutoDesc: "AI自动识别类型",
+  modeMenuDesc: "所有项目表格化",
+  modeSignDesc: "店铺·设施类型",
+  modeProductDesc: "成分与使用方法",
+  historyDelete: "删除",
+  historyClearAll: "全部清空",
+  offline: "无网络连接",
+  grantCamera: "允许相机权限后重试",
 };
 
 export const TRANSLATIONS: Record<Locale, T> = { ko, en, ja, zh };

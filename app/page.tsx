@@ -160,6 +160,7 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   const [onboardStep, setOnboardStep] = useState(0);
   const [iosBanner, setIosBanner] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState(0); // 0: upload, 1: read, 2: write, 3: almost
+  const [online, setOnline] = useState(true);
 
   // 카메라 제어
   const [zoomCaps, setZoomCaps] = useState<ZoomCaps | null>(null);
@@ -227,7 +228,18 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       window.history.replaceState({}, "", url.toString());
     }
 
-    return () => window.removeEventListener("beforeinstallprompt", beforeInstall);
+    // 온라인/오프라인 감지
+    setOnline(navigator.onLine);
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", beforeInstall);
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -546,6 +558,25 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       sign: t.modeSign,
       product: t.modeProduct,
     }[m]);
+  const modeDesc = (m: Mode) =>
+    ({
+      auto: t.modeAutoDesc,
+      menu: t.modeMenuDesc,
+      sign: t.modeSignDesc,
+      product: t.modeProductDesc,
+    }[m]);
+
+  const deleteHistoryAt = useCallback((i: number) => {
+    setHistory((prev) => {
+      const next = prev.filter((_, idx) => idx !== i);
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+  const clearAllHistory = useCallback(() => {
+    setHistory([]);
+    localStorage.removeItem(HISTORY_KEY);
+  }, []);
 
   const quotaLabel = quota
     ? quota.isPaid
@@ -570,6 +601,7 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   /* ── 렌더 ────────────────────────────────── */
   return (
     <main className={`app ${chatting ? "chatting" : ""}`}>
+      {!online && <div className="offline-badge">⚠ {t.offline}</div>}
       {flash && <div className="flash" />}
 
       {/* 카메라 */}
@@ -699,14 +731,16 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
         {!shot && (
           <>
             <div className="section-label">{t.classify}</div>
-            <div className="chip-row" style={{ marginBottom: 14 }}>
+            <div className="mode-grid">
               {(["auto", "menu", "sign", "product"] as Mode[]).map((m) => (
                 <button
                   key={m}
-                  className={`chip ${mode === m ? "active" : ""}`}
+                  className={`mode-card ${mode === m ? "active" : ""}`}
                   onClick={() => setMode(m)}
                 >
-                  {MODE_ICONS[m]} {modeLabel(m)}
+                  <div className="mode-card-icon">{MODE_ICONS[m]}</div>
+                  <div className="mode-card-label">{modeLabel(m)}</div>
+                  <div className="mode-card-desc">{modeDesc(m)}</div>
                 </button>
               ))}
             </div>
@@ -716,6 +750,11 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
         {error && (
           <div className="err">
             {error}
+            {error.startsWith(t.cameraError) && (
+              <button className="err-upgrade" onClick={startCamera}>
+                ↻ {t.grantCamera}
+              </button>
+            )}
             {exhausted && (
               <button
                 className="err-upgrade"
@@ -1063,7 +1102,19 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
 
             {sheet === "history" && (
               <>
-                <div className="sheet-title">{t.historyTitle}</div>
+                <div className="sheet-header">
+                  <div className="sheet-title" style={{ margin: 0 }}>
+                    {t.historyTitle}
+                  </div>
+                  {history.length > 0 && (
+                    <button
+                      className="sheet-header-action"
+                      onClick={clearAllHistory}
+                    >
+                      {t.historyClearAll}
+                    </button>
+                  )}
+                </div>
                 {history.length === 0 ? (
                   <div className="hint" style={{ padding: "20px 0" }}>
                     —
@@ -1071,27 +1122,31 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                 ) : (
                   <div className="history-grid">
                     {history.map((h, i) => (
-                      <button
-                        key={i}
-                        className="history-item"
-                        onClick={() => {
-                          setShot(h.thumb);
-                          setMessages([]);
-                          setSheet("none");
-                        }}
-                      >
-                        <img
-                          src={h.thumb}
-                          alt=""
-                          className="history-thumb"
-                        />
-                        <div className="history-line">
-                          {h.firstLine || "…"}
-                        </div>
-                        <div className="history-ts">
-                          {fmtDate(h.ts, locale)}
-                        </div>
-                      </button>
+                      <div key={i} className="history-item-wrap">
+                        <button
+                          className="history-item"
+                          onClick={() => {
+                            setShot(h.thumb);
+                            setMessages([]);
+                            setSheet("none");
+                          }}
+                        >
+                          <img src={h.thumb} alt="" className="history-thumb" />
+                          <div className="history-line">
+                            {h.firstLine || "…"}
+                          </div>
+                          <div className="history-ts">
+                            {fmtDate(h.ts, locale)}
+                          </div>
+                        </button>
+                        <button
+                          className="history-del"
+                          onClick={() => deleteHistoryAt(i)}
+                          aria-label={t.historyDelete}
+                        >
+                          ✕
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
