@@ -53,6 +53,24 @@ type T = {
   langLabel: string;
   processing: string;
   cancel: string;
+  // 온보딩
+  onboardTitle: string;
+  onboardStep1Title: string;
+  onboardStep1Body: string;
+  onboardStep2Title: string;
+  onboardStep2Body: string;
+  onboardStep3Title: string;
+  onboardStep3Body: string;
+  onboardStart: string;
+  onboardSkip: string;
+  // iOS 설치 가이드
+  iosInstallTitle: string;
+  iosInstallBody: string;
+  // 로딩 단계
+  loadingUpload: string;
+  loadingRead: string;
+  loadingWrite: string;
+  loadingAlmost: string;
 };
 
 const ko: T = {
@@ -100,6 +118,21 @@ const ko: T = {
   langLabel: "언어",
   processing: "결제창 여는 중...",
   cancel: "취소",
+  onboardTitle: "여행 렌즈에 오신 걸 환영해요",
+  onboardStep1Title: "외국어를 찍으세요",
+  onboardStep1Body: "간판·메뉴판·상품 패키지·표지판 — 어떤 언어든 OK",
+  onboardStep2Title: "AI가 설명해줍니다",
+  onboardStep2Body: "메뉴판은 모든 항목을 표로, 간판은 어떤 가게인지 알려줘요",
+  onboardStep3Title: "이어서 질문도 가능",
+  onboardStep3Body: "\"매워?\", \"돼지고기 들어있어?\" 같은 추가 질문도 바로",
+  onboardStart: "시작하기",
+  onboardSkip: "건너뛰기",
+  iosInstallTitle: "홈 화면에 추가하기",
+  iosInstallBody: "하단 공유 버튼 ⎘ 탭 → \"홈 화면에 추가\" 선택",
+  loadingUpload: "사진을 보내는 중...",
+  loadingRead: "AI가 읽고 있어요...",
+  loadingWrite: "해석을 작성하고 있어요...",
+  loadingAlmost: "거의 다 됐어요...",
 };
 
 const en: T = {
@@ -147,6 +180,21 @@ const en: T = {
   langLabel: "Language",
   processing: "Opening payment...",
   cancel: "Cancel",
+  onboardTitle: "Welcome to Travel Lens",
+  onboardStep1Title: "Photograph foreign text",
+  onboardStep1Body: "Signs, menus, product labels, notices — any language works",
+  onboardStep2Title: "AI explains it",
+  onboardStep2Body: "Menus become a complete table; signs tell you what the place is",
+  onboardStep3Title: "Ask follow-ups",
+  onboardStep3Body: "\"Is it spicy?\" \"Does it have pork?\" — just ask",
+  onboardStart: "Get Started",
+  onboardSkip: "Skip",
+  iosInstallTitle: "Add to Home Screen",
+  iosInstallBody: "Tap the share button ⎘ below → select \"Add to Home Screen\"",
+  loadingUpload: "Uploading photo...",
+  loadingRead: "AI is reading...",
+  loadingWrite: "Writing explanation...",
+  loadingAlmost: "Almost done...",
 };
 
 const ja: T = {
@@ -194,6 +242,21 @@ const ja: T = {
   langLabel: "言語",
   processing: "決済画面を開いています...",
   cancel: "キャンセル",
+  onboardTitle: "トラベルレンズへようこそ",
+  onboardStep1Title: "外国語を撮影",
+  onboardStep1Body: "看板・メニュー・商品パッケージ・案内 — どんな言語でもOK",
+  onboardStep2Title: "AIが解説します",
+  onboardStep2Body: "メニューは全項目を表で、看板は店の種類を教えてくれます",
+  onboardStep3Title: "追加質問もOK",
+  onboardStep3Body: "「辛い？」「豚肉入ってる？」など気軽に質問",
+  onboardStart: "はじめる",
+  onboardSkip: "スキップ",
+  iosInstallTitle: "ホーム画面に追加",
+  iosInstallBody: "下の共有ボタン ⎘ をタップ → \"ホーム画面に追加\" を選択",
+  loadingUpload: "写真を送信中...",
+  loadingRead: "AIが読んでいます...",
+  loadingWrite: "解説を作成中...",
+  loadingAlmost: "もうすぐです...",
 };
 
 const zh: T = {
@@ -241,6 +304,21 @@ const zh: T = {
   langLabel: "语言",
   processing: "正在打开支付...",
   cancel: "取消",
+  onboardTitle: "欢迎使用旅行镜头",
+  onboardStep1Title: "拍摄外语文字",
+  onboardStep1Body: "招牌·菜单·商品包装·告示 — 任何语言都可以",
+  onboardStep2Title: "AI为您解释",
+  onboardStep2Body: "菜单会变成完整表格，招牌会告诉您是什么店",
+  onboardStep3Title: "继续提问",
+  onboardStep3Body: "\"辣吗？\"\"有猪肉吗？\"— 尽管问",
+  onboardStart: "开始使用",
+  onboardSkip: "跳过",
+  iosInstallTitle: "添加到主屏幕",
+  iosInstallBody: "点击底部分享按钮 ⎘ → 选择\"添加到主屏幕\"",
+  loadingUpload: "上传照片中...",
+  loadingRead: "AI正在阅读...",
+  loadingWrite: "正在撰写解释...",
+  loadingAlmost: "即将完成...",
 };
 
 export const TRANSLATIONS: Record<Locale, T> = { ko, en, ja, zh };

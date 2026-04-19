@@ -27,6 +27,8 @@ type FocusPoint = { x: number; y: number };
 
 const HISTORY_KEY = "tl_history";
 const LOCALE_KEY = "tl_locale";
+const ONBOARDED_KEY = "tl_onboarded_v1";
+const IOS_BANNER_KEY = "tl_ios_dismissed";
 const MAX_HISTORY = 6;
 const MODE_ICONS: Record<Mode, string> = {
   auto: "✦",
@@ -34,6 +36,21 @@ const MODE_ICONS: Record<Mode, string> = {
   sign: "🪧",
   product: "📦",
 };
+
+function isIOSSafari(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) ||
+    (ua.includes("Macintosh") && "ontouchend" in document);
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  return isIOS && isSafari;
+}
+function isStandalonePWA(): boolean {
+  if (typeof window === "undefined") return false;
+  const s = (window.navigator as Navigator & { standalone?: boolean }).standalone;
+  return s === true || window.matchMedia("(display-mode: standalone)").matches;
+}
 
 /* ── 타입 확장 (브라우저 신규 API) ── */
 type CamCapabilities = MediaTrackCapabilities & {
@@ -139,6 +156,10 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   const [toast, setToast] = useState("");
   const [installable, setInstallable] = useState(false);
   const [paying, setPaying] = useState<"opening" | "capturing" | null>(null);
+  const [onboarding, setOnboarding] = useState(false);
+  const [onboardStep, setOnboardStep] = useState(0);
+  const [iosBanner, setIosBanner] = useState(false);
+  const [loadingPhase, setLoadingPhase] = useState(0); // 0: upload, 1: read, 2: write, 3: almost
 
   // 카메라 제어
   const [zoomCaps, setZoomCaps] = useState<ZoomCaps | null>(null);
@@ -177,6 +198,19 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       setInstallable(true);
     };
     window.addEventListener("beforeinstallprompt", beforeInstall);
+
+    // 첫 접속이면 온보딩 표시
+    if (!localStorage.getItem(ONBOARDED_KEY)) {
+      setOnboarding(true);
+    }
+    // iOS Safari & PWA 아닐 때만 홈화면 추가 배너
+    if (
+      isIOSSafari() &&
+      !isStandalonePWA() &&
+      !localStorage.getItem(IOS_BANNER_KEY)
+    ) {
+      setTimeout(() => setIosBanner(true), 4500);
+    }
 
     const params = new URLSearchParams(window.location.search);
     const paid = params.get("paid");
@@ -264,6 +298,20 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, loading]);
+
+  // 로딩 중 단계별 문구 자동 전환: 0→1→2→3
+  useEffect(() => {
+    if (!loading) {
+      setLoadingPhase(0);
+      return;
+    }
+    const timers: ReturnType<typeof setTimeout>[] = [
+      setTimeout(() => setLoadingPhase(1), 1500),
+      setTimeout(() => setLoadingPhase(2), 4500),
+      setTimeout(() => setLoadingPhase(3), 9000),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [loading]);
 
   /* ── 카메라 제어 (줌/초점/손전등) ──────────── */
   const applyAdvanced = useCallback(async (c: AdvancedConstraint) => {
@@ -719,6 +767,15 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
               <span className="dot" />
               <span className="dot" />
               <span className="dot" />
+              <span className="loading-phase">
+                {loadingPhase === 0
+                  ? t.loadingUpload
+                  : loadingPhase === 1
+                  ? t.loadingRead
+                  : loadingPhase === 2
+                  ? t.loadingWrite
+                  : t.loadingAlmost}
+              </span>
             </div>
           </div>
         )}
@@ -754,6 +811,80 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       )}
 
       {toast && <div className="toast">{toast}</div>}
+
+      {/* 첫 접속 온보딩 */}
+      {onboarding && (
+        <div className="onboard-backdrop">
+          <div className="onboard-card">
+            <div className="onboard-emoji">
+              {onboardStep === 0 ? "📸" : onboardStep === 1 ? "🤖" : "💬"}
+            </div>
+            <div className="onboard-title">
+              {onboardStep === 0
+                ? t.onboardStep1Title
+                : onboardStep === 1
+                ? t.onboardStep2Title
+                : t.onboardStep3Title}
+            </div>
+            <div className="onboard-body">
+              {onboardStep === 0
+                ? t.onboardStep1Body
+                : onboardStep === 1
+                ? t.onboardStep2Body
+                : t.onboardStep3Body}
+            </div>
+            <div className="onboard-dots">
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  className={`onboard-dot ${i === onboardStep ? "active" : ""}`}
+                />
+              ))}
+            </div>
+            <div className="onboard-actions">
+              <button
+                className="onboard-skip"
+                onClick={() => {
+                  localStorage.setItem(ONBOARDED_KEY, "1");
+                  setOnboarding(false);
+                }}
+              >
+                {t.onboardSkip}
+              </button>
+              <button
+                className="onboard-next"
+                onClick={() => {
+                  if (onboardStep < 2) {
+                    setOnboardStep(onboardStep + 1);
+                  } else {
+                    localStorage.setItem(ONBOARDED_KEY, "1");
+                    setOnboarding(false);
+                  }
+                }}
+              >
+                {onboardStep < 2 ? "→" : t.onboardStart}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* iOS Safari 홈 화면 추가 안내 */}
+      {iosBanner && (
+        <div className="ios-install-banner">
+          <div className="ios-install-title">📱 {t.iosInstallTitle}</div>
+          <div className="ios-install-body">{t.iosInstallBody}</div>
+          <button
+            className="ios-install-close"
+            onClick={() => {
+              localStorage.setItem(IOS_BANNER_KEY, "1");
+              setIosBanner(false);
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {paying && (
         <div className="pay-overlay" role="status" aria-live="polite">
