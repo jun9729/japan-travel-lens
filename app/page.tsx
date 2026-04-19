@@ -637,17 +637,25 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
         {shot ? (
           <img src={shot} alt="captured" className="preview" />
         ) : (
-          <video
-            ref={videoRef}
-            playsInline
-            muted
-            autoPlay
-            controls={false}
-            disablePictureInPicture
-            disableRemotePlayback
-            x-webkit-airplay="deny"
-            style={{ background: "#000" }}
-          />
+          <>
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              controls={false}
+              disablePictureInPicture
+              disableRemotePlayback
+              x-webkit-airplay="deny"
+              style={{ background: "#000" }}
+            />
+            {!ready && !error && (
+              <div className="cam-splash">
+                <div className="cam-splash-emoji">🌏</div>
+                <div className="cam-splash-text">{t.appName}</div>
+              </div>
+            )}
+          </>
         )}
         <canvas ref={canvasRef} style={{ display: "none" }} />
 

@@ -186,6 +186,38 @@ input  { font-family: inherit; }
   border-color: #ffd166;
 }
 
+/* 카메라 초기화 스플래시 */
+.cam-splash {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a0f 70%);
+  z-index: 2;
+  animation: splash-pulse 2s ease-in-out infinite;
+}
+.cam-splash-emoji {
+  font-size: 56px;
+  animation: float 2.5s ease-in-out infinite;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+.cam-splash-text {
+  font-size: 15px;
+  font-weight: 600;
+  color: #a0a0aa;
+  letter-spacing: 0.5px;
+}
+@keyframes splash-pulse {
+  0%, 100% { opacity: 0.95; }
+  50% { opacity: 0.7; }
+}
+
 /* 촬영 플래시 */
 .flash {
   position: fixed;
@@ -220,7 +252,13 @@ input  { font-family: inherit; }
   transition: background 0.15s;
 }
 .badge-btn:active { background: rgba(255,255,255,0.22); }
-.badge-btn.paid   { background: rgba(122,60,255,0.3); border-color: rgba(122,60,255,0.5); }
+.badge-btn.paid {
+  background: linear-gradient(135deg, rgba(43,108,255,0.4), rgba(122,60,255,0.45));
+  border-color: rgba(160,100,255,0.6);
+  color: #fff;
+  font-weight: 700;
+  box-shadow: 0 0 12px rgba(122,60,255,0.35);
+}
 .badge-btn.warn   { background: rgba(255,170,0,0.18); border-color: rgba(255,170,0,0.5); color: #ffcc66; }
 
 /* ── 셔터 바 ─────────────────────────────────── */
@@ -327,10 +365,10 @@ input  { font-family: inherit; }
 
 .bubble {
   max-width: 86%;
-  padding: 12px 14px;
+  padding: 13px 15px;
   border-radius: 18px;
-  font-size: 15px;
-  line-height: 1.6;
+  font-size: 15.5px;       /* 노안 고려 소폭 상향 */
+  line-height: 1.65;
   white-space: pre-wrap;
   word-break: break-word;
 }
