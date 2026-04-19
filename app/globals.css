@@ -49,6 +49,30 @@ input  { font-family: inherit; }
   object-fit: cover;
 }
 
+/* iOS Safari 가 <video> 요소에 붙이는 네이티브 컨트롤(재생/일시정지/AirPlay/PiP) 전부 제거 */
+.camera-wrap video {
+  pointer-events: none;       /* 컨트롤 버튼 자체를 탭 못 하게 */
+}
+.camera-wrap video::-webkit-media-controls,
+.camera-wrap video::-webkit-media-controls-enclosure,
+.camera-wrap video::-webkit-media-controls-panel,
+.camera-wrap video::-webkit-media-controls-overlay-enclosure,
+.camera-wrap video::-webkit-media-controls-overlay-play-button,
+.camera-wrap video::-webkit-media-controls-start-playback-button,
+.camera-wrap video::-webkit-media-controls-play-button,
+.camera-wrap video::-webkit-media-controls-timeline,
+.camera-wrap video::-webkit-media-controls-current-time-display,
+.camera-wrap video::-webkit-media-controls-time-remaining-display,
+.camera-wrap video::-webkit-media-controls-mute-button,
+.camera-wrap video::-webkit-media-controls-volume-slider,
+.camera-wrap video::-webkit-media-controls-fullscreen-button {
+  display: none !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* 카메라 오버레이 상단 */
 .camera-overlay-top {
   position: absolute;

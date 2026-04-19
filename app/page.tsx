@@ -562,6 +562,10 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
             playsInline
             muted
             autoPlay
+            controls={false}
+            disablePictureInPicture
+            disableRemotePlayback
+            x-webkit-airplay="deny"
             style={{ background: "#000" }}
           />
         )}
