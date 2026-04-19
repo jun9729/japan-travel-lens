@@ -51,6 +51,8 @@ type T = {
   installBanner: string;
   installBtn: string;
   langLabel: string;
+  processing: string;
+  cancel: string;
 };
 
 const ko: T = {
@@ -96,6 +98,8 @@ const ko: T = {
   installBanner: "홈 화면에 추가하면 앱처럼 쓸 수 있어요",
   installBtn: "추가",
   langLabel: "언어",
+  processing: "결제창 여는 중...",
+  cancel: "취소",
 };
 
 const en: T = {
@@ -141,6 +145,8 @@ const en: T = {
   installBanner: "Add to Home Screen for app experience",
   installBtn: "Install",
   langLabel: "Language",
+  processing: "Opening payment...",
+  cancel: "Cancel",
 };
 
 const ja: T = {
@@ -186,6 +192,8 @@ const ja: T = {
   installBanner: "ホーム画面に追加するとアプリのように使えます",
   installBtn: "追加",
   langLabel: "言語",
+  processing: "決済画面を開いています...",
+  cancel: "キャンセル",
 };
 
 const zh: T = {
@@ -231,6 +239,8 @@ const zh: T = {
   installBanner: "添加到主屏幕，像App一样使用",
   installBtn: "添加",
   langLabel: "语言",
+  processing: "正在打开支付...",
+  cancel: "取消",
 };
 
 export const TRANSLATIONS: Record<Locale, T> = { ko, en, ja, zh };

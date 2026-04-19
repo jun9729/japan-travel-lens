@@ -425,6 +425,56 @@ input  { font-family: inherit; }
   to   { transform: translate(-50%, 0); opacity: 1; }
 }
 
+/* ── 결제 진행 오버레이 ─────────────────────── */
+.pay-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fade-in 0.18s ease;
+}
+.pay-overlay-box {
+  background: #1a1a24;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  padding: 28px 32px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  min-width: 240px;
+  max-width: 320px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.spinner {
+  width: 40px; height: 40px;
+  border: 3px solid rgba(255,255,255,0.12);
+  border-top-color: #ffd166;
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.pay-overlay-text {
+  font-size: 15px;
+  color: #f0f0f5;
+  font-weight: 500;
+  text-align: center;
+}
+.pay-overlay-cancel {
+  font-size: 13px;
+  color: #8a8a95;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: transparent;
+  transition: background 0.12s;
+}
+.pay-overlay-cancel:active { background: rgba(255,255,255,0.06); }
+
 /* ── PWA 설치 배너 ───────────────────────────── */
 .install-banner {
   position: fixed;

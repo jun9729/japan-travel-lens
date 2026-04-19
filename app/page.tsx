@@ -138,6 +138,7 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   const [history, setHistory] = useState<ScanRecord[]>([]);
   const [toast, setToast] = useState("");
   const [installable, setInstallable] = useState(false);
+  const [paying, setPaying] = useState<"opening" | "capturing" | null>(null);
 
   // 카메라 제어
   const [zoomCaps, setZoomCaps] = useState<ZoomCaps | null>(null);
@@ -467,20 +468,24 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
 
   const afterPayPalCapture = useCallback(
     async (orderID: string) => {
-      const r = await fetch("/api/paypal/capture", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderID }),
-      });
-      const d = await r.json();
-      if (d.ok) {
-        const qr = await fetch("/api/quota");
-        const qd = await qr.json();
-        if (qd.quota) setQuota(qd.quota);
-        setSheet("none");
-        showToastMsg(t.paidSuccess, 5000);
-      } else {
-        showToastMsg(t.paidError);
+      try {
+        const r = await fetch("/api/paypal/capture", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderID }),
+        });
+        const d = await r.json();
+        if (d.ok) {
+          const qr = await fetch("/api/quota");
+          const qd = await qr.json();
+          if (qd.quota) setQuota(qd.quota);
+          setSheet("none");
+          showToastMsg(t.paidSuccess, 5000);
+        } else {
+          showToastMsg(t.paidError);
+        }
+      } finally {
+        setPaying(null);
       }
     },
     [t]
@@ -746,6 +751,23 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
 
       {toast && <div className="toast">{toast}</div>}
 
+      {paying && (
+        <div className="pay-overlay" role="status" aria-live="polite">
+          <div className="pay-overlay-box">
+            <div className="spinner" />
+            <div className="pay-overlay-text">
+              {paying === "capturing" ? `${t.processing.replace(/\.+$/, "")}...` : t.processing}
+            </div>
+            <button
+              className="pay-overlay-cancel"
+              onClick={() => setPaying(null)}
+            >
+              {t.cancel}
+            </button>
+          </div>
+        </div>
+      )}
+
       {installable && (
         <div className="install-banner">
           <span>{t.installBanner}</span>
@@ -862,16 +884,31 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                         label: "pay",
                         height: 48,
                       }}
+                      onClick={() => {
+                        setPaying("opening");
+                        navigator.vibrate?.(12);
+                      }}
                       createOrder={async () => {
-                        const r = await fetch("/api/paypal/create", {
-                          method: "POST",
-                        });
-                        const d = await r.json();
-                        if (!d.orderID) throw new Error(d.error);
-                        return d.orderID as string;
+                        try {
+                          const r = await fetch("/api/paypal/create", {
+                            method: "POST",
+                          });
+                          const d = await r.json();
+                          if (!d.orderID) throw new Error(d.error);
+                          return d.orderID as string;
+                        } catch (e) {
+                          setPaying(null);
+                          throw e;
+                        }
                       }}
                       onApprove={async (data) => {
+                        setPaying("capturing");
                         await afterPayPalCapture(data.orderID ?? "");
+                      }}
+                      onCancel={() => setPaying(null)}
+                      onError={() => {
+                        setPaying(null);
+                        showToastMsg(t.paidError);
                       }}
                     />
                   </div>
