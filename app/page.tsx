@@ -83,12 +83,7 @@ async function makeThumb(dataUrl: string): Promise<string> {
   });
 }
 
-// 통화 환산 힌트: USD 외 통화 사용자에게 "$1 (~₩1,400)" 표시
-function approxUSD(displayPrice: string): string | null {
-  // displayPrice 가 ₩/¥/€/£ 같은 비-USD 면 옆에 ($1) 추가
-  if (displayPrice.startsWith("$")) return null;
-  return "$1";
-}
+// 통화는 전역 $1 USD 로 통일 — 환산 헬퍼 불필요
 function isStandalonePWA(): boolean {
   if (typeof window === "undefined") return false;
   const s = (window.navigator as Navigator & { standalone?: boolean }).standalone;
@@ -1452,12 +1447,6 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                 <div className="quota-card" style={{ marginBottom: 12 }}>
                   <div className="quota-headline">
                     {t.upgradePlanName} — {price}
-                    {approxUSD(price) && (
-                      <span className="price-approx">
-                        {" "}
-                        {t.approxCurrency(approxUSD(price)!)}
-                      </span>
-                    )}
                   </div>
                   <div className="quota-sub">{t.upgradeNote}</div>
                   <ul className="value-list">

@@ -14,13 +14,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const country = req.headers.get("x-vercel-ip-country");
-    const price = getPriceForCountry(country);
-
-    // PayPal 이 커버하지 않는 통화는 USD fallback
-    const ppCurrency = ["krw", "twd", "thb"].includes(price.currency)
-      ? "USD"
-      : price.currency.toUpperCase();
-    const ppAmount = ppCurrency === "USD" ? "1.00" : price.paypalAmount;
+    const price = getPriceForCountry(country); // 항상 $1 USD
+    const ppCurrency = price.currency.toUpperCase(); // "USD"
+    const ppAmount = price.paypalAmount; // "1.00"
 
     const token = await getPayPalAccessToken();
 
