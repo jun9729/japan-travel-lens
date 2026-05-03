@@ -1,12 +1,19 @@
 import type { MetadataRoute } from "next";
 
+const BASE = "https://japan-travel-lens.vercel.app";
+
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = "https://japan-travel-lens.vercel.app";
   const now = new Date().toISOString();
   return [
-    { url: base, lastModified: now, priority: 1.0 },
-    { url: `${base}/legal/privacy`, lastModified: now, priority: 0.3 },
-    { url: `${base}/legal/terms`, lastModified: now, priority: 0.3 },
-    { url: `${base}/legal/refund`, lastModified: now, priority: 0.3 },
+    { url: BASE, lastModified: now, priority: 1.0, changeFrequency: "weekly" },
+    { url: `${BASE}/about`, lastModified: now, priority: 0.7, changeFrequency: "monthly" },
+    { url: `${BASE}/press`, lastModified: now, priority: 0.5, changeFrequency: "monthly" },
+    { url: `${BASE}/blog`, lastModified: now, priority: 0.8, changeFrequency: "weekly" },
+    { url: `${BASE}/blog/japanese-menu-reading-guide-2026`, lastModified: "2026-05-01T00:00:00Z", priority: 0.7, changeFrequency: "yearly" },
+    { url: `${BASE}/blog/ilbon-menupan-irl-bbeop`, lastModified: "2026-05-02T00:00:00Z", priority: 0.7, changeFrequency: "yearly" },
+    { url: `${BASE}/blog/menu-translation-apps-compared-2026`, lastModified: "2026-05-03T00:00:00Z", priority: 0.7, changeFrequency: "yearly" },
+    { url: `${BASE}/legal/privacy`, lastModified: now, priority: 0.3, changeFrequency: "monthly" },
+    { url: `${BASE}/legal/terms`, lastModified: now, priority: 0.3, changeFrequency: "monthly" },
+    { url: `${BASE}/legal/refund`, lastModified: now, priority: 0.3, changeFrequency: "monthly" },
   ];
 }
