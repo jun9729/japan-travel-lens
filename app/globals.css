@@ -394,19 +394,11 @@ input  { font-family: inherit; }
 .bubble.assistant strong { color: #fff; }
 .bubble.assistant code { background: rgba(255,255,255,0.08); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
 .bubble.assistant hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 0; }
-.bubble.assistant .table-scroll {
-  position: relative;
-  margin: 8px 0;
-}
-.bubble.assistant table { width: 100%; border-collapse: collapse; font-size: 13px; display: block; overflow-x: auto; white-space: nowrap; margin: 0; }
-/* 표 우측 그라데이션 페이드 (스크롤 가능 단서) */
-.bubble.assistant table::after {
-  content: "";
-  position: sticky;
-  right: 0; top: 0; bottom: 0;
-  width: 24px;
-  background: linear-gradient(to right, transparent, #16161e);
-  pointer-events: none;
+.bubble.assistant table {
+  width: 100%; border-collapse: collapse; font-size: 14.5px;
+  display: block; overflow-x: auto; white-space: nowrap; margin: 8px 0;
+  /* 우측에 안쪽 그림자로 "더 있음" 단서 (sticky pseudo 보다 안정적) */
+  box-shadow: inset -16px 0 12px -16px rgba(255,255,255,0.18);
 }
 .bubble.assistant thead { background: rgba(255,255,255,0.05); }
 .bubble.assistant th,.bubble.assistant td { padding: 6px 10px; border: 1px solid rgba(255,255,255,0.1); text-align: left; }
@@ -671,27 +663,13 @@ input  { font-family: inherit; }
 .upgrade-btn:active { transform: scale(0.98); }
 .upgrade-btn:disabled { opacity: 0.5; }
 
-/* ── 결제 버튼들 ─────────────────────────────── */
-.payment-btn {
-  width: 100%;
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.1);
-  background: #1a1a24;
-  margin-bottom: 10px;
-  transition: background 0.12s;
-}
-.payment-btn:active { background: rgba(255,255,255,0.08); }
-.payment-btn:disabled { opacity: 0.45; cursor: default; }
+/* ── 결제 placeholder & 통화 환산 ─────────────── */
 .pay-icon { font-size: 24px; width: 32px; text-align: center; flex-shrink: 0; }
 .pay-label {
   display: flex; flex-direction: column; gap: 3px;
   text-align: left; font-size: 15px; color: #f0f0f5;
 }
-.pay-price { font-size: 13px; color: #9a9aa5; }
 .pay-note  { font-size: 11px; color: #5a5a65; }
-.kakao-btn  { border-color: rgba(255,220,0,0.2); }
 .paypal-wrap { margin-bottom: 10px; }
 .paypal-placeholder {
   display: flex; align-items: center; gap: 14px;
@@ -701,14 +679,23 @@ input  { font-family: inherit; }
   background: rgba(255,255,255,0.03);
   opacity: 0.7;
 }
-.coming-soon-badge {
-  display: inline-block; font-size: 11px;
-  padding: 2px 8px; border-radius: 6px;
-  background: rgba(255,255,255,0.1);
-  color: #8a8a95; margin-left: 8px;
-  vertical-align: middle;
+.price-approx {
+  font-size: 14px; font-weight: 500;
+  color: #88a8ff; margin-left: 6px;
 }
-.kakao-note { font-size: 11px; color: #5a5a65; margin: -4px 0 12px 4px; line-height: 1.5; }
+
+/* 채팅 중 read-only 모드 표시 */
+.mode-readonly {
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+.mode-readonly-label { color: #d0d0dd; font-weight: 600; }
+.mode-readonly-hint { color: #6a6a72; font-size: 11px; }
 
 /* ── 히스토리 그리드 ─────────────────────────── */
 .history-grid {
@@ -802,11 +789,11 @@ input  { font-family: inherit; }
   border: 1px solid rgba(255,255,255,0.18);
   transition: background 0.12s, transform 0.08s;
 }
-/* 터치 확장 영역 — visually 32px 이지만 실제 탭 영역은 더 넓게 */
+/* 터치 확장은 인접 항목 침범 방지 위해 -4px 만 (32+8=40px 유효 영역) */
 .history-del::after {
   content: "";
   position: absolute;
-  inset: -10px;
+  inset: -4px;
 }
 .history-del:active {
   background: rgba(255,80,80,0.9);
@@ -1006,7 +993,10 @@ input  { font-family: inherit; }
 .legal-footer-mini a {
   color: #8a8a95;
   text-decoration: none;
-  padding: 6px 4px;
+  padding: 12px 8px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 .legal-footer-mini a:active { color: #fff; }
 .legal-footer-mini span { color: #3a3a45; }
@@ -1021,17 +1011,19 @@ input  { font-family: inherit; }
 
 /* ── 로딩 취소 버튼 ──────────────────────────── */
 .loading-cancel {
-  margin-left: 8px;
-  width: 26px; height: 26px;
+  margin-left: 10px;
+  width: 32px; height: 32px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.08);
-  color: #8a8a95;
-  font-size: 12px;
+  background: rgba(255,255,255,0.1);
+  color: #c0c0cc;
+  font-size: 13px;
   display: flex; align-items: center; justify-content: center;
-  border: 1px solid rgba(255,255,255,0.1);
-  transition: background 0.12s;
+  border: 1px solid rgba(255,255,255,0.12);
+  transition: background 0.12s, transform 0.08s;
+  position: relative;
 }
-.loading-cancel:active { background: rgba(255,80,80,0.2); color: #fff; }
+.loading-cancel::after { content: ""; position: absolute; inset: -8px; }
+.loading-cancel:active { background: rgba(255,80,80,0.25); color: #fff; transform: scale(0.93); }
 
 /* ── 확인 다이얼로그 ─────────────────────────── */
 .confirm-backdrop {
@@ -1119,20 +1111,21 @@ input  { font-family: inherit; }
 }
 .legal-footer span { color: #3a3a45; }
 
-/* ── 모션 감소 / 색상 모드 ───────────────────── */
+/* ── 모션 감소 ───────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  .cam-splash, .cam-splash-emoji, .splash-pulse, .float, .blink { animation: none !important; }
+  .cam-splash, .cam-splash-emoji, .spinner, .dot { animation: none !important; }
+  .focus-ring { display: none !important; }
 }
 
 @media (min-width: 1024px) {
-  /* 랩톱: 더 큰 프레임 + 좌측 브랜딩 */
+  /* 랩톱: 더 큰 프레임 + 좌측 브랜딩 (언어 중립) */
   body::before {
-    content: "🌏 여행 렌즈";
+    content: "🌏 Travel Lens";
     position: fixed;
     top: 50%; left: calc(50% - 280px);
     transform: translate(-100%, -50%);
@@ -1145,7 +1138,7 @@ input  { font-family: inherit; }
     pointer-events: none;
   }
   body::after {
-    content: "Travel Lens — AI explains foreign signs, menus, products.";
+    content: "Point at foreign text — AI explains it.";
     position: fixed;
     top: calc(50% + 30px); left: calc(50% - 280px);
     transform: translate(-100%, -50%);

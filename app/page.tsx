@@ -9,7 +9,7 @@ import {
   usePayPalScriptReducer,
   DISPATCH_ACTION,
 } from "@paypal/react-paypal-js";
-import { TRANSLATIONS, LOCALE_LABELS, type Locale } from "@/lib/locale";
+import { TRANSLATIONS, LOCALE_LABELS, type Locale, type Translations } from "@/lib/locale";
 
 type Mode = "auto" | "menu" | "sign" | "product";
 type ChatTurn = { role: "user" | "assistant"; content: string };
@@ -20,7 +20,13 @@ type QuotaInfo = {
   isPaid: boolean;
   paidUntil?: number;
 };
-type ScanRecord = { thumb: string; firstLine: string; ts: number };
+type ScanRecord = {
+  thumb: string;
+  firstLine: string;
+  ts: number;
+  reply?: string; // 첫 AI 응답 캐시 (있으면 history 탭 시 즉시 복원)
+  locale?: Locale; // 그때의 응답 언어
+};
 type Sheet = "none" | "settings" | "upgrade" | "history";
 type ZoomCaps = { min: number; max: number; step: number };
 type FocusPoint = { x: number; y: number };
@@ -52,6 +58,36 @@ function isInAppBrowser(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
   return /KAKAOTALK|FB_IAB|FBAN|FBAV|Instagram|Line\//i.test(ua);
+}
+
+// 히스토리 썸네일을 200px 정사각형 JPEG 0.6 으로 줄임 (~10-30KB)
+async function makeThumb(dataUrl: string): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const TARGET = 200;
+      const min = Math.min(img.width, img.height);
+      const scale = TARGET / min;
+      const sw = Math.round(img.width * scale);
+      const sh = Math.round(img.height * scale);
+      const c = document.createElement("canvas");
+      c.width = TARGET;
+      c.height = TARGET;
+      const ctx = c.getContext("2d")!;
+      // center crop
+      ctx.drawImage(img, (TARGET - sw) / 2, (TARGET - sh) / 2, sw, sh);
+      resolve(c.toDataURL("image/jpeg", 0.6));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
+// 통화 환산 힌트: USD 외 통화 사용자에게 "$1 (~₩1,400)" 표시
+function approxUSD(displayPrice: string): string | null {
+  // displayPrice 가 ₩/¥/€/£ 같은 비-USD 면 옆에 ($1) 추가
+  if (displayPrice.startsWith("$")) return null;
+  return "$1";
 }
 function isStandalonePWA(): boolean {
   if (typeof window === "undefined") return false;
@@ -149,7 +185,10 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   const captureGuard = useRef(false); // 셔터 스팸 방지
   const abortRef = useRef<AbortController | null>(null); // AI 요청 취소
   const payTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const captureTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const expiringNotifiedRef = useRef(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const tRef = useRef<Translations | null>(null); // useCallback deps 회피용
 
   const [locale, setLocale] = useState<Locale>("ko");
   const [ready, setReady] = useState(false);
@@ -189,6 +228,7 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   const [focusPoint, setFocusPoint] = useState<FocusPoint | null>(null);
 
   const t = TRANSLATIONS[locale];
+  tRef.current = t;
   const chatting = !!shot && messages.length > 0;
 
   /* ── 초기화 ───────────────────────────────── */
@@ -312,11 +352,12 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       setReady(true);
       detectCaps();
     } catch (e: unknown) {
+      const tt = tRef.current!;
       setError(
-        `${t.cameraError}: ${e instanceof Error ? e.message : String(e)}`
+        `__CAMERA__:${tt.cameraError}: ${e instanceof Error ? e.message : String(e)}`
       );
     }
-  }, [t, detectCaps]);
+  }, [detectCaps]);
 
   useEffect(() => {
     // 인앱 브라우저면 카메라 시도 안 함 (실패할 게 뻔함)
@@ -350,20 +391,46 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
     return () => timers.forEach(clearTimeout);
   }, [loading]);
 
-  // 결제 진행 중 60초 타임아웃 — 팝업 차단/멈춤 상황 자동 해제
+  // opening / capturing 둘 다 60s 타임아웃 (멈춤 방지)
   useEffect(() => {
-    if (paying === "opening") {
+    if (paying === "opening" || paying === "capturing") {
       payTimeoutRef.current = setTimeout(() => {
         setPaying(null);
         showToastMsg(t.paymentTimeout, 5000);
       }, 60_000);
-    } else {
-      if (payTimeoutRef.current) clearTimeout(payTimeoutRef.current);
+    } else if (payTimeoutRef.current) {
+      clearTimeout(payTimeoutRef.current);
     }
     return () => {
       if (payTimeoutRef.current) clearTimeout(payTimeoutRef.current);
     };
   }, [paying, t]);
+
+  // ESC 키로 모달 / 시트 / 다이얼로그 닫기
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (confirmAction) {
+        setConfirmAction(null);
+        return;
+      }
+      if (sheet !== "none") {
+        setSheet("none");
+        return;
+      }
+      if (paying) {
+        setPaying(null);
+        return;
+      }
+      if (onboarding) {
+        // 온보딩은 ESC 로 건너뛰기
+        localStorage.setItem(ONBOARDED_KEY, "1");
+        setOnboarding(false);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [confirmAction, sheet, paying, onboarding]);
 
   // paid 만료 30분 전 한 번 알림
   useEffect(() => {
@@ -484,27 +551,117 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
         }),
         signal: ac.signal,
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({} as Record<string, unknown>));
       if (data.quota) setQuota(data.quota);
       if (!res.ok) {
-        // 422 BLURRY_RETAKE 는 환불됐으므로 다른 에러 형태로 던짐
-        if (res.status === 422 && data.error === "BLURRY_RETAKE") {
-          throw Object.assign(new Error(t.badScanRetry), {
+        // 코드 → 로케일 메시지 매핑 (서버는 코드만 보냄)
+        const tt = tRef.current!;
+        const code = data.code as string | undefined;
+        let msg: string;
+        if (code === "BLURRY_RETAKE") {
+          throw Object.assign(new Error(tt.badScanRetry), {
             blurryRefunded: true,
           });
         }
-        throw Object.assign(new Error(data?.error ?? "Error"), {
+        if (code === "QUOTA_EXHAUSTED") {
+          msg = tt.errQuotaExhausted(quota?.limit ?? 10, price);
+        } else if (code === "IMAGE_EMPTY") {
+          msg = tt.errImageEmpty;
+        } else if (code === "OPENAI_MISSING") {
+          msg = tt.errOpenAIMissing;
+        } else if (code === "AI_FAILED") {
+          msg = tt.errAIFailed;
+        } else {
+          msg = (data.error as string) ?? tt.errAIFailed;
+        }
+        throw Object.assign(new Error(msg), {
           needUpgrade: !!data.needUpgrade,
         });
       }
       return (data.text as string) ?? "";
     },
-    [mode, locale, convoLocale, t]
+    [mode, locale, convoLocale, quota?.limit, price]
+  );
+
+  // 파일 업로드 fallback (카메라 거부/지원 안 됨/데스크톱)
+  const handleFileUpload = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      e.target.value = ""; // 같은 파일 재선택 가능하게
+
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = reader.result as string;
+        // 1280px 로 다운스케일
+        const img = new Image();
+        img.onload = async () => {
+          const max = 1280;
+          const scale = Math.min(1, max / Math.max(img.width, img.height));
+          const w = Math.round(img.width * scale);
+          const h = Math.round(img.height * scale);
+          const c = document.createElement("canvas");
+          c.width = w;
+          c.height = h;
+          c.getContext("2d")!.drawImage(img, 0, 0, w, h);
+          const compressed = c.toDataURL("image/jpeg", 0.82);
+
+          setShot(compressed);
+          setMessages([]);
+          setConvoLocale(null);
+          setError("");
+          setLoading(true);
+
+          try {
+            const text = await callAPI(compressed, []);
+            setMessages([{ role: "assistant", content: text }]);
+            const firstLine = text.replace(/[#*|`]/g, "").split("\n")[0] ?? "";
+            const thumb = await makeThumb(compressed);
+            setHistory((prev) => {
+              const next: ScanRecord[] = [
+                {
+                  thumb,
+                  firstLine: firstLine.slice(0, 60),
+                  ts: Date.now(),
+                  reply: text.slice(0, 6000),
+                  locale,
+                },
+                ...prev,
+              ].slice(0, MAX_HISTORY);
+              try {
+                localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+              } catch { /**/ }
+              return next;
+            });
+          } catch (err: unknown) {
+            const e2 = err as Error & { needUpgrade?: boolean; blurryRefunded?: boolean };
+            if (e2.blurryRefunded) {
+              setShot(null);
+              showToastMsg(e2.message, 3500);
+            } else {
+              setError(e2.message);
+              if (e2.needUpgrade) setSheet("upgrade");
+            }
+          } finally {
+            setLoading(false);
+          }
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    },
+    [callAPI, locale]
   );
 
   const cancelAI = useCallback(() => {
     abortRef.current?.abort();
     setLoading(false);
+    // 서버는 abort 신호로 OpenAI 호출 중단 + quota cookie 갱신 안 함
+    // 이미 갱신됐을 가능성 대비해서 한 번 quota 재조회 (최신 상태 sync)
+    fetch("/api/quota")
+      .then((r) => r.json())
+      .then((d) => d.quota && setQuota(d.quota))
+      .catch(() => {});
   }, []);
 
   /* ── 촬영 ────────────────────────────────── */
@@ -519,7 +676,7 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       h = v.videoHeight || 0;
     if (w === 0 || h === 0) {
       captureGuard.current = false;
-      setError(t.cameraError);
+      setError(`__CAMERA__:${t.cameraError}`);
       return;
     }
     const s = Math.min(1, 1280 / Math.max(w, h));
@@ -541,22 +698,29 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       const text = await callAPI(dataUrl, []);
       setMessages([{ role: "assistant", content: text }]);
       const firstLine = text.replace(/[#*|`]/g, "").split("\n")[0] ?? "";
+      // 썸네일 작게 압축 + 응답 캐시
+      const thumb = await makeThumb(dataUrl);
       setHistory((prev) => {
-        const next = [
-          { thumb: dataUrl, firstLine: firstLine.slice(0, 60), ts: Date.now() },
+        const next: ScanRecord[] = [
+          {
+            thumb,
+            firstLine: firstLine.slice(0, 60),
+            ts: Date.now(),
+            reply: text.slice(0, 6000), // 너무 큰 응답은 일부만
+            locale,
+          },
           ...prev,
         ].slice(0, MAX_HISTORY);
         try {
           localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
           return next;
         } catch {
-          // 저장 실패 → 3개로 줄여 재시도
           try {
             const trimmed = next.slice(0, 3);
             localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
             return trimmed;
           } catch {
-            return next; // 저장 실패해도 메모리엔 유지
+            return next;
           }
         }
       });
@@ -567,21 +731,28 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
         name?: string;
       };
       if (err.name !== "AbortError") {
-        setError(err.message);
-        if (err.needUpgrade) setSheet("upgrade");
-        if (err.blurryRefunded) setShot(null); // 흐릿 → 카메라로 복귀
+        if (err.blurryRefunded) {
+          // 흐릿 → 카메라로 복귀하면서 짧은 토스트만
+          setShot(null);
+          showToastMsg(err.message, 3500);
+        } else {
+          setError(err.message);
+          if (err.needUpgrade) setSheet("upgrade");
+        }
       }
     } finally {
       setLoading(false);
       captureGuard.current = false;
     }
-  }, [callAPI, loading, t]);
+  }, [callAPI, loading]);
 
   const retake = useCallback(() => {
+    abortRef.current?.abort(); // 진행 중 요청 취소
     setShot(null);
     setMessages([]);
     setInput("");
     setError("");
+    setConvoLocale(null);
     if (videoRef.current && streamRef.current) {
       videoRef.current.srcObject = streamRef.current;
       videoRef.current.play().catch(() => {});
@@ -605,7 +776,13 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       const reply = await callAPI(shot, next);
       setMessages([...next, { role: "assistant", content: reply }]);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : String(e));
+      const err = e as Error & { needUpgrade?: boolean; name?: string };
+      if (err.name === "AbortError") {
+        setMessages(messages); // 이전 상태 복구 (orphan user msg 제거)
+      } else {
+        setError(err.message);
+        if (err.needUpgrade) setSheet("upgrade");
+      }
     } finally {
       setLoading(false);
       setTimeout(() => inputRef.current?.focus(), 0);
@@ -630,6 +807,13 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
 
   const afterPayPalCapture = useCallback(
     async (orderID: string) => {
+      // capturing 단계도 60초 타임아웃
+      if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current);
+      captureTimeoutRef.current = setTimeout(() => {
+        setPaying(null);
+        showToastMsg(t.paymentFailedWithOrder(orderID), 8000);
+      }, 60_000);
+
       try {
         const r = await fetch("/api/paypal/capture", {
           method: "POST",
@@ -643,10 +827,16 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
           if (qd.quota) setQuota(qd.quota);
           setSheet("none");
           showToastMsg(t.paidSuccess, 5000);
+          expiringNotifiedRef.current = false; // 재결제 시 만료 경고 다시 활성화
         } else {
-          showToastMsg(t.paidError);
+          // orderID 가 있으면 사용자에게 노출 (환불 추적용)
+          const id = (d.orderID as string) || orderID;
+          showToastMsg(t.paymentFailedWithOrder(id), 8000);
         }
+      } catch {
+        showToastMsg(t.paymentFailedWithOrder(orderID), 8000);
       } finally {
+        if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current);
         setPaying(null);
       }
     },
@@ -668,13 +858,13 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       product: t.modeProductDesc,
     }[m]);
 
-  const deleteHistoryAt = useCallback(
-    (i: number) => {
+  const deleteHistoryByTs = useCallback(
+    (ts: number) => {
       setConfirmAction({
         msg: t.confirmDeleteOne,
         onYes: () => {
           setHistory((prev) => {
-            const next = prev.filter((_, idx) => idx !== i);
+            const next = prev.filter((h) => h.ts !== ts);
             try {
               localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
             } catch { /**/ }
@@ -722,6 +912,16 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
     <main className={`app ${chatting ? "chatting" : ""}`}>
       {!online && <div className="offline-badge">⚠ {t.offline}</div>}
       {flash && <div className="flash" />}
+
+      {/* 파일 업로드 — 갤러리 fallback */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleFileUpload}
+      />
+
 
       {/* 카메라 */}
       <div
@@ -823,30 +1023,32 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       <div className="action-bar">
         {shot ? (
           <>
-            <button className="side-btn" onClick={retake}>
+            <button className="side-btn" onClick={retake} aria-label={t.recapture}>
               ↺
             </button>
             <button
               className="shutter"
               onClick={capture}
-              disabled={loading || !ready}
+              disabled={loading || !ready || !!exhausted}
               style={{ background: loading ? "#555" : "#fff" }}
+              aria-label={t.capture}
             />
-            <button className="side-btn" onClick={() => setSheet("history")}>
+            <button className="side-btn" onClick={() => setSheet("history")} aria-label={t.historyTitle}>
               🕐
             </button>
           </>
         ) : (
           <>
-            <button className="side-btn" onClick={() => setSheet("history")}>
+            <button className="side-btn" onClick={() => setSheet("history")} aria-label={t.historyTitle}>
               🕐
             </button>
             <button
               className="shutter"
               onClick={capture}
-              disabled={loading || !ready}
+              disabled={loading || !ready || !!exhausted}
+              aria-label={t.capture}
             />
-            <button className="side-btn" onClick={() => setSheet("settings")}>
+            <button className="side-btn" onClick={() => setSheet("settings")} aria-label={t.settingsTitle}>
               ⚙
             </button>
           </>
@@ -874,39 +1076,44 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
           </>
         )}
 
-        {/* 채팅 중에도 분류 칩 노출 (변경 시 다음 촬영부터 적용) */}
+        {/* 채팅 중엔 현재 모드만 표시 (변경하려면 retake) */}
         {chatting && (
-          <div className="chip-row chip-row-mini" style={{ marginBottom: 10 }}>
-            {(["auto", "menu", "sign", "product"] as Mode[]).map((m) => (
-              <button
-                key={m}
-                className={`chip ${mode === m ? "active" : ""}`}
-                onClick={() => {
-                  setMode(m);
-                  showToastMsg(t.modeChangedRetake, 2500);
-                }}
-              >
-                {MODE_ICONS[m]} {modeLabel(m)}
-              </button>
-            ))}
+          <div className="mode-readonly">
+            <span className="mode-readonly-label">
+              {MODE_ICONS[mode]} {modeLabel(mode)}
+            </span>
+            <span className="mode-readonly-hint">{t.modeReadOnly}</span>
           </div>
         )}
 
         {error && (
           <div className="err">
-            {error}
-            {error.startsWith(t.cameraError) && (
-              <button className="err-upgrade" onClick={startCamera}>
-                ↻ {t.grantCamera}
-              </button>
-            )}
-            {exhausted && (
-              <button
-                className="err-upgrade"
-                onClick={() => setSheet("upgrade")}
-              >
-                {t.upgradeBtn(price)} →
-              </button>
+            {error.startsWith("__CAMERA__:") ? (
+              <>
+                <div>{error.replace("__CAMERA__:", "")}</div>
+                <button className="err-upgrade" onClick={startCamera}>
+                  ↻ {t.grantCamera}
+                </button>
+                <button
+                  className="err-upgrade"
+                  style={{ marginTop: 6 }}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  📁 {t.uploadFromGallery}
+                </button>
+              </>
+            ) : (
+              <>
+                {error}
+                {exhausted && (
+                  <button
+                    className="err-upgrade"
+                    onClick={() => setSheet("upgrade")}
+                  >
+                    {t.upgradeBtn(price)} →
+                  </button>
+                )}
+              </>
             )}
           </div>
         )}
@@ -1012,11 +1219,18 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
             <div className="onboard-body">{t.inAppBrowserWarn}</div>
             <div className="onboard-actions">
               <button
+                className="onboard-skip"
+                onClick={() => setInAppWarn(false)}
+              >
+                {t.close}
+              </button>
+              <button
                 className="onboard-next"
                 onClick={() => {
-                  // 클립보드에 URL 복사
-                  navigator.clipboard?.writeText(window.location.href);
-                  showToastMsg(t.copied, 4000);
+                  navigator.clipboard?.writeText(window.location.href).then(
+                    () => showToastMsg(t.copied, 4000),
+                    () => {}
+                  );
                 }}
               >
                 {t.copy} URL
@@ -1126,19 +1340,12 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
         </div>
       )}
 
-      {paying && (
+      {/* PayPal capture 단계만 풀스크린 오버레이 — opening 단계는 SDK 가 자체 처리 */}
+      {paying === "capturing" && (
         <div className="pay-overlay" role="status" aria-live="polite">
           <div className="pay-overlay-box">
             <div className="spinner" />
-            <div className="pay-overlay-text">
-              {paying === "capturing" ? `${t.processing.replace(/\.+$/, "")}...` : t.processing}
-            </div>
-            <button
-              className="pay-overlay-cancel"
-              onClick={() => setPaying(null)}
-            >
-              {t.cancel}
-            </button>
+            <div className="pay-overlay-text">{t.processing}</div>
           </div>
         </div>
       )}
@@ -1245,6 +1452,12 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                 <div className="quota-card" style={{ marginBottom: 12 }}>
                   <div className="quota-headline">
                     {t.upgradePlanName} — {price}
+                    {approxUSD(price) && (
+                      <span className="price-approx">
+                        {" "}
+                        {t.approxCurrency(approxUSD(price)!)}
+                      </span>
+                    )}
                   </div>
                   <div className="quota-sub">{t.upgradeNote}</div>
                   <ul className="value-list">
@@ -1334,17 +1547,22 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                   </div>
                 ) : (
                   <div className="history-grid">
-                    {history.map((h, i) => (
-                      <div key={i} className="history-item-wrap">
+                    {history.map((h) => (
+                      <div key={h.ts} className="history-item-wrap">
                         <button
                           className="history-item"
                           onClick={() => {
                             setShot(h.thumb);
-                            setMessages([]);
+                            setMessages(
+                              h.reply
+                                ? [{ role: "assistant", content: h.reply }]
+                                : []
+                            );
+                            setConvoLocale(h.locale ?? null);
                             setSheet("none");
                           }}
                         >
-                          <img src={h.thumb} alt="" className="history-thumb" />
+                          <img src={h.thumb} alt={h.firstLine || "scan"} className="history-thumb" />
                           <div className="history-line">
                             {h.firstLine || "…"}
                           </div>
@@ -1354,7 +1572,7 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                         </button>
                         <button
                           className="history-del"
-                          onClick={() => deleteHistoryAt(i)}
+                          onClick={() => deleteHistoryByTs(h.ts)}
                           aria-label={t.historyDelete}
                         >
                           ✕

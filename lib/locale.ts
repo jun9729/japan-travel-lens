@@ -117,6 +117,23 @@ type T = {
   paidExpiringSoon: string;
   // 모드 변경 알림
   modeChangedRetake: string;
+  // 서버 에러 코드 → 메시지
+  errImageEmpty: string;
+  errQuotaExhausted: (limit: number, price: string) => string;
+  errOpenAIMissing: string;
+  errAIFailed: string;
+  errNetwork: string;
+  // 결제 복구
+  paymentFailedWithOrder: (id: string) => string;
+  // 파일 업로드 fallback
+  uploadFromGallery: string;
+  uploadHint: string;
+  // 통화 힌트
+  approxCurrency: (usd: string) => string;
+  // 모드 비활성 안내
+  modeReadOnly: string;
+  // 채팅 종료
+  chatBack: string;
 };
 
 const ko: T = {
@@ -215,6 +232,17 @@ const ko: T = {
   confirmNo: "취소",
   paidExpiringSoon: "무제한 이용 30분 남았어요",
   modeChangedRetake: "분류를 바꾸려면 다시 촬영하세요",
+  errImageEmpty: "이미지가 비어 있어요",
+  errQuotaExhausted: (l, p) => `오늘 무료 ${l}회를 다 썼어요. ${p}로 24시간 무제한 이용 가능합니다.`,
+  errOpenAIMissing: "AI 서비스 설정이 안 돼있어요. 잠시 후 다시 시도해주세요.",
+  errAIFailed: "AI 호출에 실패했어요. 다시 시도해주세요.",
+  errNetwork: "네트워크 연결을 확인해주세요.",
+  paymentFailedWithOrder: (id) => `결제 확인에 실패했어요. 주문번호 ${id} 와 함께 travellens.help@gmail.com 으로 연락주세요.`,
+  uploadFromGallery: "사진 앨범에서 선택",
+  uploadHint: "카메라가 안 되시나요? 갤러리에서 사진을 선택해도 됩니다",
+  approxCurrency: (u) => `(약 ${u})`,
+  modeReadOnly: "다음 촬영부터 적용",
+  chatBack: "← 카메라로",
 };
 
 const en: T = {
@@ -313,6 +341,17 @@ const en: T = {
   confirmNo: "Cancel",
   paidExpiringSoon: "30 minutes of unlimited remaining",
   modeChangedRetake: "Retake to apply the new category",
+  errImageEmpty: "The image is empty",
+  errQuotaExhausted: (l, p) => `You've used your ${l} free scans today. Get 24h unlimited for ${p}.`,
+  errOpenAIMissing: "AI service not configured. Try again shortly.",
+  errAIFailed: "AI call failed. Please try again.",
+  errNetwork: "Check your network connection.",
+  paymentFailedWithOrder: (id) => `Payment couldn't be confirmed. Email travellens.help@gmail.com with order ID ${id}.`,
+  uploadFromGallery: "Choose from gallery",
+  uploadHint: "Camera not working? Pick a photo from your gallery instead",
+  approxCurrency: (u) => `(~${u})`,
+  modeReadOnly: "Applies to next capture",
+  chatBack: "← Back to camera",
 };
 
 const ja: T = {
@@ -411,6 +450,17 @@ const ja: T = {
   confirmNo: "キャンセル",
   paidExpiringSoon: "無制限あと30分",
   modeChangedRetake: "新しい分類で撮り直してください",
+  errImageEmpty: "画像が空です",
+  errQuotaExhausted: (l, p) => `本日の無料${l}回を使い切りました。${p}で24時間無制限。`,
+  errOpenAIMissing: "AIサービスが未設定です。しばらく後再試行してください。",
+  errAIFailed: "AI呼び出しに失敗しました。再試行してください。",
+  errNetwork: "ネットワーク接続を確認してください。",
+  paymentFailedWithOrder: (id) => `決済確認に失敗。注文番号 ${id} を添えて travellens.help@gmail.com まで。`,
+  uploadFromGallery: "ギャラリーから選択",
+  uploadHint: "カメラが使えませんか? ギャラリーから写真を選べます",
+  approxCurrency: (u) => `(約 ${u})`,
+  modeReadOnly: "次回の撮影から適用",
+  chatBack: "← カメラへ",
 };
 
 const zh: T = {
@@ -509,6 +559,17 @@ const zh: T = {
   confirmNo: "取消",
   paidExpiringSoon: "无限制剩余30分钟",
   modeChangedRetake: "重新拍摄以应用新分类",
+  errImageEmpty: "图像为空",
+  errQuotaExhausted: (l, p) => `今日 ${l} 次免费已用完。${p} 即可获得 24 小时无限使用。`,
+  errOpenAIMissing: "AI 服务未配置，请稍后再试。",
+  errAIFailed: "AI 调用失败，请重试。",
+  errNetwork: "请检查网络连接。",
+  paymentFailedWithOrder: (id) => `支付确认失败。请将订单号 ${id} 发送至 travellens.help@gmail.com。`,
+  uploadFromGallery: "从相册选择",
+  uploadHint: "相机无法使用？可从相册选择照片",
+  approxCurrency: (u) => `(约 ${u})`,
+  modeReadOnly: "下次拍摄起生效",
+  chatBack: "← 返回相机",
 };
 
 export const TRANSLATIONS: Record<Locale, T> = { ko, en, ja, zh };

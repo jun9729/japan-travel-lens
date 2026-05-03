@@ -2,6 +2,7 @@ import { ImageResponse } from "next/og";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+export const alt = "Travel Lens — AI explains foreign signs, menus, products";
 
 export default function OG() {
   return new ImageResponse(
@@ -20,37 +21,56 @@ export default function OG() {
           padding: "60px",
         }}
       >
-        <div style={{ fontSize: 140, lineHeight: 1, marginBottom: 24 }}>🌏</div>
-        <div style={{ fontSize: 80, fontWeight: 800, letterSpacing: "-2px" }}>
-          Travel Lens
+        {/* 🌏 emoji 가 fallback 폰트 부재로 깨질 수 있어 텍스트 + 큰 글자로 대체 */}
+        <div
+          style={{
+            fontSize: 80,
+            fontWeight: 900,
+            letterSpacing: "-2px",
+            marginBottom: 8,
+          }}
+        >
+          ✦ Travel Lens
         </div>
         <div
           style={{
-            fontSize: 32,
-            opacity: 0.9,
-            marginTop: 16,
+            fontSize: 30,
+            opacity: 0.92,
+            marginTop: 12,
             maxWidth: 900,
             textAlign: "center",
             lineHeight: 1.35,
           }}
         >
-          Point at foreign text — AI explains it
+          Point at foreign text — AI explains it.
         </div>
         <div
           style={{
-            fontSize: 22,
-            opacity: 0.7,
-            marginTop: 28,
+            fontSize: 24,
+            opacity: 0.75,
+            marginTop: 36,
             display: "flex",
-            gap: 20,
+            gap: 28,
           }}
         >
-          <span>📋 Menus</span>
-          <span>🪧 Signs</span>
-          <span>📦 Products</span>
+          <span>Menus</span>
+          <span>·</span>
+          <span>Signs</span>
+          <span>·</span>
+          <span>Products</span>
+        </div>
+        <div
+          style={{
+            position: "absolute",
+            bottom: 30,
+            fontSize: 16,
+            opacity: 0.55,
+          }}
+        >
+          japan-travel-lens.vercel.app
         </div>
       </div>
     ),
-    { ...size }
+    { ...size, emoji: "twemoji" }
   );
 }

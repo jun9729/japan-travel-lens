@@ -1,7 +1,16 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 
 const SITE_URL = "https://japan-travel-lens.vercel.app";
+
+function pickLang(acceptLang: string | null): string {
+  const raw = (acceptLang ?? "").toLowerCase();
+  if (raw.startsWith("ko")) return "ko";
+  if (raw.startsWith("ja")) return "ja";
+  if (raw.startsWith("zh")) return "zh";
+  return "en";
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -58,13 +67,15 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const h = await headers();
+  const lang = pickLang(h.get("accept-language"));
   return (
-    <html lang="en">
+    <html lang={lang}>
       <body>{children}</body>
     </html>
   );

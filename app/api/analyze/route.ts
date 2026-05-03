@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 
     if (!image || !image.startsWith("data:image/")) {
       return NextResponse.json(
-        { error: "이미지가 비어 있습니다." },
+        { code: "IMAGE_EMPTY" },
         { status: 400 }
       );
     }
@@ -91,20 +91,20 @@ export async function POST(req: NextRequest) {
     if (!quota.ok) {
       const res = NextResponse.json(
         {
-          error: `오늘의 무료 횟수(${quota.info.limit}회)를 다 썼어요. 하루 무제한($1)으로 바로 풀 수 있어요.`,
+          code: "QUOTA_EXHAUSTED",
           quota: quota.info,
           needUpgrade: true,
         },
         { status: 429 }
       );
-      writeQuota(res, quota.next); // 현재 상태 그대로(count 유지) 재서명
+      writeQuota(res, quota.next);
       return res;
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "서버에 OPENAI_API_KEY 가 설정돼 있지 않아요." },
+        { code: "OPENAI_MISSING" },
         { status: 500 }
       );
     }
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
         content: [
           {
             type: "text",
-            text: `${MODE_HINT[mode]}\n사진 속 외국어를 한국어로 설명해줘.`,
+            text: `${MODE_HINT[mode]}\nReply ONLY in ${replyLang}. Read the foreign text in the photo and explain it.`,
           },
           { type: "image_url", image_url: { url: image, detail: "high" } },
         ],
@@ -128,24 +128,31 @@ export async function POST(req: NextRequest) {
       })),
     ];
 
-    const response = await client.chat.completions.create({
-      model: MODEL,
-      temperature: 0.2,
-      max_tokens: 4000,
-      messages: openAIMessages,
-    });
+    const response = await client.chat.completions.create(
+      {
+        model: MODEL,
+        temperature: 0.2,
+        max_tokens: 4000,
+        messages: openAIMessages,
+      },
+      // 클라가 abort 하면 OpenAI 호출도 즉시 종료 → 비용 절약 + 응답 안 옴
+      { signal: req.signal }
+    );
 
-    const text =
-      response.choices[0]?.message?.content?.trim() ?? "";
+    // 클라가 abort 했으면 quota 갱신 없이 끝냄
+    if (req.signal.aborted) {
+      return new Response(null, { status: 499 });
+    }
 
-    // 블러 감지: AI가 "BLURRY_RETAKE" 토큰만 보냈으면 quota 차감 안 하고 재시도 안내
-    if (text === "BLURRY_RETAKE" || text.startsWith("BLURRY_RETAKE")) {
+    const text = response.choices[0]?.message?.content?.trim() ?? "";
+
+    // 블러 감지 — exact match 만 (정상 응답이 BLURRY_RETAKE 로 시작해도 무시)
+    if (text === "BLURRY_RETAKE") {
       const refundedRes = NextResponse.json(
-        { error: "BLURRY_RETAKE", quota: quota.info, refunded: true },
+        { code: "BLURRY_RETAKE", quota: quota.info, refunded: true },
         { status: 422 }
       );
-      // count 증가 없이 현재 상태 그대로 재서명 (사실상 환불)
-      writeQuota(refundedRes, quota.current);
+      writeQuota(refundedRes, quota.current); // count 증가 안 함
       return refundedRes;
     }
 
@@ -154,9 +161,17 @@ export async function POST(req: NextRequest) {
     writeQuota(res, quota.next);
     return res;
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
+    // 클라이언트 abort 는 일반 에러로 처리하지 않음 (cookie 갱신 안 함)
+    if (
+      e instanceof Error &&
+      (e.name === "AbortError" || (e as Error & { code?: string }).code === "ABORT_ERR")
+    ) {
+      return new Response(null, { status: 499 });
+    }
+    const detail = e instanceof Error ? e.message : String(e);
+    console.error("[analyze] failed", detail);
     return NextResponse.json(
-      { error: `AI 호출 실패: ${msg}` },
+      { code: "AI_FAILED", detail },
       { status: 500 }
     );
   }
