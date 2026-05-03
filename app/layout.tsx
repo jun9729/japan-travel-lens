@@ -1,24 +1,59 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+const SITE_URL = "https://japan-travel-lens.vercel.app";
+
 export const metadata: Metadata = {
-  title: "여행 렌즈 — AI 외국어 설명",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Travel Lens — AI explains foreign signs, menus, products",
+    template: "%s · Travel Lens",
+  },
   description:
-    "카메라로 찍으면 AI가 외국어 간판·메뉴판·상품을 한국어로 설명해줍니다.",
-  applicationName: "여행 렌즈",
+    "Point your phone at any foreign-language sign, menu, or product label. AI translates and explains it in your language. Works with Japanese, Chinese, English, Korean, Thai, Vietnamese, Spanish, French, and more.",
+  applicationName: "Travel Lens",
+  keywords: [
+    "travel translator",
+    "menu translator",
+    "japanese menu",
+    "メニュー 翻訳",
+    "看板 翻訳",
+    "招牌翻译",
+    "菜单翻译",
+    "여행 번역",
+    "메뉴판 번역",
+    "AI camera translator",
+  ],
   appleWebApp: {
     capable: true,
-    title: "여행 렌즈",
+    title: "Travel Lens",
     statusBarStyle: "black-translucent",
   },
   formatDetection: { telephone: false },
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    title: "Travel Lens — AI explains foreign signs, menus, products",
+    description:
+      "Point your phone at foreign text. AI translates and explains in your language. 10 free scans/day.",
+    siteName: "Travel Lens",
+    locale: "en_US",
+    alternateLocale: ["ko_KR", "ja_JP", "zh_CN"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Travel Lens — AI translates anything you photograph",
+    description:
+      "Foreign menu? Foreign sign? Snap and AI explains. Works in 4+ languages.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5, // 사용자 확대 허용 (접근성)
+  userScalable: true,
   themeColor: "#0b0b0f",
   viewportFit: "cover",
 };
@@ -29,7 +64,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

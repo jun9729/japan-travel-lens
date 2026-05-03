@@ -37,17 +37,33 @@ function todayKST(): string {
 function getSecret(): string {
   const s = process.env.QUOTA_SECRET;
   if (!s || s.length < 16) {
-    // 개발용 fallback (서명은 되지만 불안정)
     return "dev-insecure-quota-secret-please-set-QUOTA_SECRET";
   }
   return s;
 }
 
+/** 이전 시크릿 (콤마 구분 가능) — 로테이션 시 둘 다 인정 */
+function getOldSecrets(): string[] {
+  const raw = process.env.QUOTA_SECRET_OLD;
+  if (!raw) return [];
+  return raw.split(",").map((s) => s.trim()).filter((s) => s.length >= 16);
+}
+
+function signWith(secret: string, payloadB64: string): string {
+  return crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+}
+
 function sign(payloadB64: string): string {
-  return crypto
-    .createHmac("sha256", getSecret())
-    .update(payloadB64)
-    .digest("base64url");
+  return signWith(getSecret(), payloadB64);
+}
+
+/** 현재 시크릿 또는 이전 시크릿 중 하나라도 매치하면 OK */
+function verify(payloadB64: string, sig: string): boolean {
+  if (signWith(getSecret(), payloadB64) === sig) return true;
+  for (const old of getOldSecrets()) {
+    if (signWith(old, payloadB64) === sig) return true;
+  }
+  return false;
 }
 
 function encode(payload: Payload): string {
@@ -59,7 +75,7 @@ function decode(cookieValue: string | undefined): Payload | null {
   if (!cookieValue) return null;
   const [b64, sig] = cookieValue.split(".");
   if (!b64 || !sig) return null;
-  if (sign(b64) !== sig) return null;
+  if (!verify(b64, sig)) return null;
   try {
     return JSON.parse(Buffer.from(b64, "base64url").toString("utf8")) as Payload;
   } catch {

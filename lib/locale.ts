@@ -81,6 +81,42 @@ type T = {
   historyClearAll: string;
   offline: string;
   grantCamera: string;
+  // 가치 제안 (업그레이드)
+  valueAnchor1: string;
+  valueAnchor2: string;
+  valueAnchor3: string;
+  oneTime: string;
+  noAutoRenew: string;
+  noCardSaved: string;
+  // 결제 복구 / 환불
+  refundIntro: string;
+  refundContact: string;
+  paymentRecovery: string;
+  paymentTimeout: string;
+  paypalUnavailable: string;
+  // 신뢰 / 법적
+  privacyLink: string;
+  termsLink: string;
+  refundLink: string;
+  poweredBy: string;
+  // 카메라 / 환경
+  cameraGrantHelp: string;
+  inAppBrowserWarn: string;
+  openInBrowser: string;
+  cameraSettingsHelp: string;
+  // AI 취소 / 재시도
+  cancelRequest: string;
+  retryFree: string;
+  badScanRetry: string;
+  // 확인 다이얼로그
+  confirmDeleteOne: string;
+  confirmClearAll: string;
+  confirmYes: string;
+  confirmNo: string;
+  // 페이드 만료 경고
+  paidExpiringSoon: string;
+  // 모드 변경 알림
+  modeChangedRetake: string;
 };
 
 const ko: T = {
@@ -91,7 +127,7 @@ const ko: T = {
   modeSign: "간판·표지판",
   modeProduct: "상품·패키지",
   classify: "분류",
-  hint: "셔터를 눌러 외국어 간판·메뉴판·상품을 찍어보세요.\nAI가 한국어로 설명하고 이어서 질문도 할 수 있어요.",
+  hint: "셔터를 눌러 외국어 간판·메뉴판·상품을 찍어보세요.\nAI가 모르는 글자를 풀어 설명해주고 이어서 질문도 받아요.",
   hintSub: "일본어·중국어·영어·태국어·베트남어·스페인어 등 지원",
   capture: "촬영",
   recapture: "다시 찍기",
@@ -151,6 +187,34 @@ const ko: T = {
   historyClearAll: "전체 삭제",
   offline: "인터넷 연결 없음",
   grantCamera: "카메라 권한 허용 후 다시 시도",
+  valueAnchor1: "도쿄 생수 1병 가격으로 24시간 무제한",
+  valueAnchor2: "메뉴판 한 장 = 보통 5~10회 스캔",
+  valueAnchor3: "Google 번역보다 메뉴 해석 정확도 ↑",
+  oneTime: "원타임 결제 (자동 갱신 없음)",
+  noAutoRenew: "24시간 후 자동 종료, 추가 청구 없음",
+  noCardSaved: "카드 정보 저장 안 함",
+  refundIntro: "결제 후 24시간 이내 사용 안 했으면 전액 환불",
+  refundContact: "문제가 있으신가요? travellens.help@gmail.com 로 주문번호와 함께 연락 주세요.",
+  paymentRecovery: "결제는 됐지만 화면이 갱신되지 않을 수 있어요. 새로고침하거나 위 이메일로 주문번호를 알려주세요.",
+  paymentTimeout: "결제창이 응답하지 않아요. 팝업 차단이 켜져 있는지 확인하시고 다시 시도해주세요.",
+  paypalUnavailable: "PayPal 서비스에 연결할 수 없어요. 잠시 후 다시 시도해주세요.",
+  privacyLink: "개인정보처리방침",
+  termsLink: "이용약관",
+  refundLink: "환불 정책",
+  poweredBy: "AI 분석은 OpenAI GPT-4o 로 처리됩니다",
+  cameraGrantHelp: "권한이 거부됐어요. 주소창의 자물쇠 → 카메라 → '허용' 으로 변경 후 새로고침해주세요.",
+  inAppBrowserWarn: "이 브라우저에서는 카메라가 동작하지 않아요. 우측 상단 메뉴에서 'Safari/Chrome 으로 열기' 를 선택해주세요.",
+  openInBrowser: "Safari/Chrome 으로 열기",
+  cameraSettingsHelp: "iOS 설정 → Safari → 카메라 → 허용",
+  cancelRequest: "취소",
+  retryFree: "무료로 다시 시도",
+  badScanRetry: "사진이 흐릿했나요? 다시 찍으면 횟수 차감 안 돼요",
+  confirmDeleteOne: "이 사진을 삭제할까요?",
+  confirmClearAll: "모든 히스토리를 삭제할까요?",
+  confirmYes: "삭제",
+  confirmNo: "취소",
+  paidExpiringSoon: "무제한 이용 30분 남았어요",
+  modeChangedRetake: "분류를 바꾸려면 다시 촬영하세요",
 };
 
 const en: T = {
@@ -221,6 +285,34 @@ const en: T = {
   historyClearAll: "Clear all",
   offline: "No internet connection",
   grantCamera: "Grant camera permission and retry",
+  valueAnchor1: "Cheaper than a bottle of water in Tokyo",
+  valueAnchor2: "One menu = ~5-10 scans typically",
+  valueAnchor3: "More accurate than Google Translate for menus",
+  oneTime: "One-time payment (no recurring)",
+  noAutoRenew: "Auto-ends after 24h, no extra charge",
+  noCardSaved: "Card details not stored",
+  refundIntro: "Full refund within 24h if unused",
+  refundContact: "Issue? Email travellens.help@gmail.com with your order number.",
+  paymentRecovery: "Payment may have succeeded but UI didn't refresh. Reload, or email us with your order number.",
+  paymentTimeout: "Payment window not responding. Check popup blocker and try again.",
+  paypalUnavailable: "Can't reach PayPal right now. Please try again in a moment.",
+  privacyLink: "Privacy Policy",
+  termsLink: "Terms",
+  refundLink: "Refunds",
+  poweredBy: "AI by OpenAI GPT-4o",
+  cameraGrantHelp: "Permission denied. Tap the lock icon in the URL bar → Camera → Allow, then reload.",
+  inAppBrowserWarn: "Camera doesn't work in this browser. Open in Safari or Chrome from the menu (top right).",
+  openInBrowser: "Open in Safari/Chrome",
+  cameraSettingsHelp: "iOS Settings → Safari → Camera → Allow",
+  cancelRequest: "Cancel",
+  retryFree: "Retry for free",
+  badScanRetry: "Was the photo blurry? Retake doesn't cost a scan",
+  confirmDeleteOne: "Delete this photo?",
+  confirmClearAll: "Delete all history?",
+  confirmYes: "Delete",
+  confirmNo: "Cancel",
+  paidExpiringSoon: "30 minutes of unlimited remaining",
+  modeChangedRetake: "Retake to apply the new category",
 };
 
 const ja: T = {
@@ -291,6 +383,34 @@ const ja: T = {
   historyClearAll: "すべて削除",
   offline: "インターネット接続なし",
   grantCamera: "カメラ許可後、再試行してください",
+  valueAnchor1: "東京の水1本より安い",
+  valueAnchor2: "メニュー1枚 ≈ 5〜10回スキャン",
+  valueAnchor3: "Google翻訳よりメニュー解読が正確",
+  oneTime: "ワンタイム決済（自動更新なし）",
+  noAutoRenew: "24時間後に自動終了、追加請求なし",
+  noCardSaved: "カード情報は保存しません",
+  refundIntro: "24時間以内に未使用なら全額返金",
+  refundContact: "問題があれば注文番号を添えて travellens.help@gmail.com まで。",
+  paymentRecovery: "決済は完了したが画面が更新されない場合があります。リロードまたは上記メールに連絡を。",
+  paymentTimeout: "決済画面が応答しません。ポップアップブロックを確認してやり直してください。",
+  paypalUnavailable: "PayPal に接続できません。少し時間をおいて再試行を。",
+  privacyLink: "プライバシーポリシー",
+  termsLink: "利用規約",
+  refundLink: "返金ポリシー",
+  poweredBy: "AI解析は OpenAI GPT-4o を使用",
+  cameraGrantHelp: "カメラが拒否されています。アドレスバーの鍵アイコン → カメラ → 許可 → 再読み込み。",
+  inAppBrowserWarn: "このブラウザでは動作しません。右上メニューから Safari / Chrome で開いてください。",
+  openInBrowser: "Safari/Chrome で開く",
+  cameraSettingsHelp: "iOS 設定 → Safari → カメラ → 許可",
+  cancelRequest: "キャンセル",
+  retryFree: "無料で再試行",
+  badScanRetry: "写真がブレた? 撮り直しは回数を消費しません",
+  confirmDeleteOne: "この写真を削除しますか？",
+  confirmClearAll: "履歴をすべて削除しますか？",
+  confirmYes: "削除",
+  confirmNo: "キャンセル",
+  paidExpiringSoon: "無制限あと30分",
+  modeChangedRetake: "新しい分類で撮り直してください",
 };
 
 const zh: T = {
@@ -361,6 +481,34 @@ const zh: T = {
   historyClearAll: "全部清空",
   offline: "无网络连接",
   grantCamera: "允许相机权限后重试",
+  valueAnchor1: "比东京一瓶水还便宜",
+  valueAnchor2: "一份菜单 ≈ 5-10 次扫描",
+  valueAnchor3: "菜单解读比 Google 翻译更准",
+  oneTime: "一次性付款（无自动续订）",
+  noAutoRenew: "24 小时后自动结束，不会额外收费",
+  noCardSaved: "不保存卡信息",
+  refundIntro: "24 小时内未使用全额退款",
+  refundContact: "如有问题，请将订单号发送至 travellens.help@gmail.com。",
+  paymentRecovery: "支付可能已完成但界面未刷新。请刷新页面或邮件联系我们。",
+  paymentTimeout: "支付窗口无响应。请检查浏览器弹窗拦截后重试。",
+  paypalUnavailable: "无法连接 PayPal，请稍后再试。",
+  privacyLink: "隐私政策",
+  termsLink: "使用条款",
+  refundLink: "退款政策",
+  poweredBy: "AI 由 OpenAI GPT-4o 提供",
+  cameraGrantHelp: "权限被拒。点击地址栏锁形图标 → 相机 → 允许 → 刷新。",
+  inAppBrowserWarn: "此浏览器无法使用相机。请从右上角菜单选择「用 Safari/Chrome 打开」。",
+  openInBrowser: "用 Safari/Chrome 打开",
+  cameraSettingsHelp: "iOS 设置 → Safari → 相机 → 允许",
+  cancelRequest: "取消",
+  retryFree: "免费重试",
+  badScanRetry: "照片模糊？重拍不会扣次数",
+  confirmDeleteOne: "删除这张照片？",
+  confirmClearAll: "删除所有历史？",
+  confirmYes: "删除",
+  confirmNo: "取消",
+  paidExpiringSoon: "无限制剩余30分钟",
+  modeChangedRetake: "重新拍摄以应用新分类",
 };
 
 export const TRANSLATIONS: Record<Locale, T> = { ko, en, ja, zh };

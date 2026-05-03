@@ -46,6 +46,13 @@ function isIOSSafari(): boolean {
   const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
   return isIOS && isSafari;
 }
+
+// 카카오톡 / 라인 / 인스타그램 / 페이스북 등 인앱 브라우저 감지 (카메라 미지원)
+function isInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent;
+  return /KAKAOTALK|FB_IAB|FBAN|FBAV|Instagram|Line\//i.test(ua);
+}
 function isStandalonePWA(): boolean {
   if (typeof window === "undefined") return false;
   const s = (window.navigator as Navigator & { standalone?: boolean }).standalone;
@@ -139,6 +146,10 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
   const deferredInstall = useRef<BeforeInstallPromptEvent | null>(null);
   const pinchStart = useRef<{ dist: number; zoom: number } | null>(null);
+  const captureGuard = useRef(false); // 셔터 스팸 방지
+  const abortRef = useRef<AbortController | null>(null); // AI 요청 취소
+  const payTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expiringNotifiedRef = useRef(false);
 
   const [locale, setLocale] = useState<Locale>("ko");
   const [ready, setReady] = useState(false);
@@ -161,6 +172,13 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   const [iosBanner, setIosBanner] = useState(false);
   const [loadingPhase, setLoadingPhase] = useState(0); // 0: upload, 1: read, 2: write, 3: almost
   const [online, setOnline] = useState(true);
+  const [inAppWarn, setInAppWarn] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{
+    msg: string;
+    onYes: () => void;
+  } | null>(null);
+  // 같은 사진/대화에서 사용한 첫 응답 언어를 잠궈둠 (대화 중 언어 바뀌어도 답변 유지)
+  const [convoLocale, setConvoLocale] = useState<Locale | null>(null);
 
   // 카메라 제어
   const [zoomCaps, setZoomCaps] = useState<ZoomCaps | null>(null);
@@ -301,11 +319,18 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   }, [t, detectCaps]);
 
   useEffect(() => {
+    // 인앱 브라우저면 카메라 시도 안 함 (실패할 게 뻔함)
+    if (isInAppBrowser()) {
+      setInAppWarn(true);
+      return;
+    }
+    // 첫 접속 온보딩이 떠있으면 끝날 때까지 카메라 권한 요청 미룸
+    if (onboarding) return;
     startCamera();
     return () => {
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, [startCamera]);
+  }, [startCamera, onboarding]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
@@ -324,6 +349,33 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
     ];
     return () => timers.forEach(clearTimeout);
   }, [loading]);
+
+  // 결제 진행 중 60초 타임아웃 — 팝업 차단/멈춤 상황 자동 해제
+  useEffect(() => {
+    if (paying === "opening") {
+      payTimeoutRef.current = setTimeout(() => {
+        setPaying(null);
+        showToastMsg(t.paymentTimeout, 5000);
+      }, 60_000);
+    } else {
+      if (payTimeoutRef.current) clearTimeout(payTimeoutRef.current);
+    }
+    return () => {
+      if (payTimeoutRef.current) clearTimeout(payTimeoutRef.current);
+    };
+  }, [paying, t]);
+
+  // paid 만료 30분 전 한 번 알림
+  useEffect(() => {
+    if (!quota?.isPaid || !quota.paidUntil) return;
+    const ms = quota.paidUntil - Date.now() - 30 * 60_000;
+    if (ms <= 0 || expiringNotifiedRef.current) return;
+    const id = setTimeout(() => {
+      expiringNotifiedRef.current = true;
+      showToastMsg(t.paidExpiringSoon, 6000);
+    }, ms);
+    return () => clearTimeout(id);
+  }, [quota?.isPaid, quota?.paidUntil, t]);
 
   /* ── 카메라 제어 (줌/초점/손전등) ──────────── */
   const applyAdvanced = useCallback(async (c: AdvancedConstraint) => {
@@ -412,6 +464,15 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
   /* ── API ──────────────────────────────────── */
   const callAPI = useCallback(
     async (image: string, turns: ChatTurn[]) => {
+      // 이전 요청이 있으면 abort
+      abortRef.current?.abort();
+      const ac = new AbortController();
+      abortRef.current = ac;
+
+      // 대화 시작 언어로 잠금 (중간에 locale 바꿔도 답변 일관성 유지)
+      const replyLocale = convoLocale ?? locale;
+      if (turns.length === 0) setConvoLocale(locale);
+
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -419,27 +480,48 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
           image,
           messages: turns,
           mode,
-          uiLang: locale,
+          uiLang: replyLocale,
         }),
+        signal: ac.signal,
       });
       const data = await res.json();
       if (data.quota) setQuota(data.quota);
-      if (!res.ok)
+      if (!res.ok) {
+        // 422 BLURRY_RETAKE 는 환불됐으므로 다른 에러 형태로 던짐
+        if (res.status === 422 && data.error === "BLURRY_RETAKE") {
+          throw Object.assign(new Error(t.badScanRetry), {
+            blurryRefunded: true,
+          });
+        }
         throw Object.assign(new Error(data?.error ?? "Error"), {
           needUpgrade: !!data.needUpgrade,
         });
+      }
       return (data.text as string) ?? "";
     },
-    [mode, locale]
+    [mode, locale, convoLocale, t]
   );
+
+  const cancelAI = useCallback(() => {
+    abortRef.current?.abort();
+    setLoading(false);
+  }, []);
 
   /* ── 촬영 ────────────────────────────────── */
   const capture = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) return;
+    if (captureGuard.current || loading) return; // 셔터 스팸 가드
+    captureGuard.current = true;
+
     const v = videoRef.current,
       c = canvasRef.current;
-    const w = v.videoWidth || 1280,
-      h = v.videoHeight || 720;
+    const w = v.videoWidth || 0,
+      h = v.videoHeight || 0;
+    if (w === 0 || h === 0) {
+      captureGuard.current = false;
+      setError(t.cameraError);
+      return;
+    }
     const s = Math.min(1, 1280 / Math.max(w, h));
     c.width = Math.round(w * s);
     c.height = Math.round(h * s);
@@ -451,6 +533,7 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
     navigator.vibrate?.(40);
     setShot(dataUrl);
     setMessages([]);
+    setConvoLocale(null);
     setError("");
     setLoading(true);
 
@@ -463,17 +546,36 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
           { thumb: dataUrl, firstLine: firstLine.slice(0, 60), ts: Date.now() },
           ...prev,
         ].slice(0, MAX_HISTORY);
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-        return next;
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+          return next;
+        } catch {
+          // 저장 실패 → 3개로 줄여 재시도
+          try {
+            const trimmed = next.slice(0, 3);
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+            return trimmed;
+          } catch {
+            return next; // 저장 실패해도 메모리엔 유지
+          }
+        }
       });
     } catch (e: unknown) {
-      const err = e as Error & { needUpgrade?: boolean };
-      setError(err.message);
-      if (err.needUpgrade) setSheet("upgrade");
+      const err = e as Error & {
+        needUpgrade?: boolean;
+        blurryRefunded?: boolean;
+        name?: string;
+      };
+      if (err.name !== "AbortError") {
+        setError(err.message);
+        if (err.needUpgrade) setSheet("upgrade");
+        if (err.blurryRefunded) setShot(null); // 흐릿 → 카메라로 복귀
+      }
     } finally {
       setLoading(false);
+      captureGuard.current = false;
     }
-  }, [callAPI]);
+  }, [callAPI, loading, t]);
 
   const retake = useCallback(() => {
     setShot(null);
@@ -566,17 +668,34 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       product: t.modeProductDesc,
     }[m]);
 
-  const deleteHistoryAt = useCallback((i: number) => {
-    setHistory((prev) => {
-      const next = prev.filter((_, idx) => idx !== i);
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      return next;
-    });
-  }, []);
+  const deleteHistoryAt = useCallback(
+    (i: number) => {
+      setConfirmAction({
+        msg: t.confirmDeleteOne,
+        onYes: () => {
+          setHistory((prev) => {
+            const next = prev.filter((_, idx) => idx !== i);
+            try {
+              localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+            } catch { /**/ }
+            return next;
+          });
+          setConfirmAction(null);
+        },
+      });
+    },
+    [t]
+  );
   const clearAllHistory = useCallback(() => {
-    setHistory([]);
-    localStorage.removeItem(HISTORY_KEY);
-  }, []);
+    setConfirmAction({
+      msg: t.confirmClearAll,
+      onYes: () => {
+        setHistory([]);
+        try { localStorage.removeItem(HISTORY_KEY); } catch { /**/ }
+        setConfirmAction(null);
+      },
+    });
+  }, [t]);
 
   const quotaLabel = quota
     ? quota.isPaid
@@ -755,6 +874,24 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
           </>
         )}
 
+        {/* 채팅 중에도 분류 칩 노출 (변경 시 다음 촬영부터 적용) */}
+        {chatting && (
+          <div className="chip-row chip-row-mini" style={{ marginBottom: 10 }}>
+            {(["auto", "menu", "sign", "product"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                className={`chip ${mode === m ? "active" : ""}`}
+                onClick={() => {
+                  setMode(m);
+                  showToastMsg(t.modeChangedRetake, 2500);
+                }}
+              >
+                {MODE_ICONS[m]} {modeLabel(m)}
+              </button>
+            ))}
+          </div>
+        )}
+
         {error && (
           <div className="err">
             {error}
@@ -823,6 +960,13 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                   ? t.loadingWrite
                   : t.loadingAlmost}
               </span>
+              <button
+                className="loading-cancel"
+                onClick={cancelAI}
+                aria-label={t.cancelRequest}
+              >
+                ✕
+              </button>
             </div>
           </div>
         )}
@@ -858,6 +1002,55 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
       )}
 
       {toast && <div className="toast">{toast}</div>}
+
+      {/* 인앱 브라우저 (카카오톡/라인 등) → 외부 브라우저 안내 */}
+      {inAppWarn && (
+        <div className="onboard-backdrop" style={{ zIndex: 250 }}>
+          <div className="onboard-card">
+            <div className="onboard-emoji">⚠️</div>
+            <div className="onboard-title">{t.cameraError}</div>
+            <div className="onboard-body">{t.inAppBrowserWarn}</div>
+            <div className="onboard-actions">
+              <button
+                className="onboard-next"
+                onClick={() => {
+                  // 클립보드에 URL 복사
+                  navigator.clipboard?.writeText(window.location.href);
+                  showToastMsg(t.copied, 4000);
+                }}
+              >
+                {t.copy} URL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 확인 다이얼로그 (히스토리 삭제 등) */}
+      {confirmAction && (
+        <div
+          className="confirm-backdrop"
+          onClick={() => setConfirmAction(null)}
+        >
+          <div className="confirm-card" onClick={(e) => e.stopPropagation()}>
+            <div className="confirm-msg">{confirmAction.msg}</div>
+            <div className="confirm-actions">
+              <button
+                className="confirm-btn confirm-no"
+                onClick={() => setConfirmAction(null)}
+              >
+                {t.confirmNo}
+              </button>
+              <button
+                className="confirm-btn confirm-yes"
+                onClick={confirmAction.onYes}
+              >
+                {t.confirmYes}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 첫 접속 온보딩 */}
       {onboarding && (
@@ -1049,11 +1242,19 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
             {sheet === "upgrade" && (
               <>
                 <div className="sheet-title">{t.upgradeTitle}</div>
-                <div className="quota-card" style={{ marginBottom: 16 }}>
+                <div className="quota-card" style={{ marginBottom: 12 }}>
                   <div className="quota-headline">
                     {t.upgradePlanName} — {price}
                   </div>
                   <div className="quota-sub">{t.upgradeNote}</div>
+                  <ul className="value-list">
+                    <li>✓ {t.oneTime}</li>
+                    <li>✓ {t.noAutoRenew}</li>
+                    <li>✓ {t.noCardSaved}</li>
+                  </ul>
+                  <div className="value-anchors">
+                    💡 {t.valueAnchor1}
+                  </div>
                 </div>
 
                 {paypalId ? (
@@ -1099,12 +1300,16 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                     <div className="pay-icon">🅿</div>
                     <div className="pay-label">
                       <span>{t.payWithPayPal}</span>
-                      <span className="pay-note">
-                        서버에 PAYPAL_CLIENT_ID 설정 후 활성화
-                      </span>
+                      <span className="pay-note">{t.paypalUnavailable}</span>
                     </div>
                   </div>
                 )}
+
+                <div className="trust-block">
+                  <div className="trust-item">↩️ {t.refundIntro}</div>
+                  <div className="trust-item">✉️ {t.refundContact}</div>
+                  <div className="trust-item">🤖 {t.poweredBy}</div>
+                </div>
               </>
             )}
 
@@ -1160,6 +1365,14 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
                 )}
               </>
             )}
+
+            <div className="legal-footer-mini">
+              <a href="/legal/privacy" target="_blank" rel="noopener">{t.privacyLink}</a>
+              <span>·</span>
+              <a href="/legal/terms" target="_blank" rel="noopener">{t.termsLink}</a>
+              <span>·</span>
+              <a href="/legal/refund" target="_blank" rel="noopener">{t.refundLink}</a>
+            </div>
 
             <button className="sheet-close" onClick={() => setSheet("none")}>
               {t.close}

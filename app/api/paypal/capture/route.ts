@@ -23,15 +23,22 @@ export async function POST(req: NextRequest) {
     });
     const order = (await r.json()) as { status?: string };
 
+    // 주문 상태 무관 항상 로그 (복구 추적용)
+    console.log("[paypal] capture", { orderID, status: order.status });
+
     if (order.status !== "COMPLETED") {
       return NextResponse.json(
-        { error: `PayPal status: ${order.status ?? "unknown"}` },
+        {
+          error: `PayPal status: ${order.status ?? "unknown"}`,
+          orderID, // 클라가 사용자에게 보여줄 수 있게
+          recoverable: true,
+        },
         { status: 400 }
       );
     }
 
     const nextPayload = markPaid(req);
-    const res = NextResponse.json({ ok: true });
+    const res = NextResponse.json({ ok: true, orderID });
     writeQuota(res, nextPayload);
     return res;
   } catch (e: unknown) {

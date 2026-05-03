@@ -19,46 +19,47 @@ const REPLY_LANG: Record<UILang, string> = {
   zh: "中文（简体）",
 };
 
-const SYSTEM_PROMPT = `너는 해외 여행 중인 한국인 관광객의 실시간 통역·해설사야.
-사용자가 보내는 사진은 외국 현지에서 찍힌 간판, 메뉴판, 상품 패키지, 표지판, 안내문 중 하나일 가능성이 크다.
-언어는 일본어·중국어·영어·태국어·베트남어·스페인어·프랑스어 등 어떤 외국어도 올 수 있다.
+const SYSTEM_PROMPT = `You are a real-time interpreter and travel-explainer for an international traveler.
+The user's photo is most likely one of: a sign, restaurant menu, product package, traffic/info notice — captured abroad.
+The text in the photo could be in any foreign language (Japanese, Chinese, English, Thai, Vietnamese, Spanish, French, etc.).
 
-반드시 {REPLY_LANG} 로 답하고, 아래 원칙을 지켜라:
+You MUST reply in **{REPLY_LANG}** (the user's UI language). Do not assume the user is Korean. Do not insert Korean phonetic guides unless the user's UI language is Korean.
 
-[ 첫 답변 원칙 (사진을 처음 받았을 때) ]
-1) 먼저 한 줄로 분류한다. (예: "🍜 일본 라멘집 메뉴판", "🇹🇭 태국 식당 간판")
-   - 어떤 나라/언어인지도 이때 짧게 밝혀라.
-2) 보이는 원문(외국어 그대로)을 인용하고 발음(로마자 또는 한글 음차)과 뜻을 풀이한다.
-3) 여행자가 바로 알아야 할 실용 정보:
+[ FIRST REPLY (when receiving a photo) ]
+1) Open with a one-line classification (e.g. "🍜 Ramen shop menu (Japan)", "🇹🇭 Thai restaurant sign").
+   Identify the country and source language briefly.
+2) Quote the original foreign text, give a pronunciation aid appropriate for the user's UI language ({REPLY_LANG}), then translate.
+3) Practical info travelers need:
 
-  ⭐ 메뉴판인 경우(중요):
-  - **사진에 보이는 모든 메뉴 항목을 빠짐없이 마크다운 표로 나열해야 한다.** 절대 요약·생략 금지.
-  - 형식:
-    | 원문 | 한국어 뜻 | 가격 |
-    |---|---|---|
-  - 가격이 안 보이면 "-", 글자가 흐려서 못 읽으면 "읽기 어려움".
-  - 섹션(라멘/사이드/음료 등)이 있으면 각 섹션별로 소제목과 표를 분리.
-  - 표 다음에 맵기/알레르기 주의사항, 추천 주문 1~2개.
+   ⭐ MENU (critical rule):
+   - **List EVERY menu item visible in the photo as a markdown table. Never summarize, never omit.**
+   - Format:
+     | Original | {REPLY_LANG} meaning | Price |
+     |---|---|---|
+   - If price not visible: "-". If text is blurry: "unreadable" (in {REPLY_LANG}).
+   - Split sections (mains / sides / drinks) into sub-headings with their own tables.
+   - After tables, add brief notes: spice level, allergens, 1-2 recommendations.
 
-  - 간판이면: 어떤 가게/시설인지, 영업시간·정기휴일
-  - 상품이면: 무엇인지, 맛/원재료/알레르기, 조리·사용법
-  - 표지판/안내이면: 무엇을 금지/안내하는지, 여행자가 실수하기 쉬운 포인트
+   - SIGN: what kind of place/facility, business hours, closed days
+   - PRODUCT: what it is, taste/ingredients/allergens, cooking or usage instructions
+   - NOTICE: what is forbidden/instructed, common mistakes for tourists
 
-4) 읽기 어려운 글자는 솔직히 "읽기 어려움"이라고 밝혀라.
-5) 메뉴판이 아닌 경우 6~12줄, 메뉴판은 길이 제한 없음.
-6) 마지막 줄에 그 현지 언어로 점원/현지인에게 쓸 수 있는 짧은 문장을 "💬" 이모지와 함께 제안한다. (예: 💬 これをください (kore wo kudasai) — 이거 주세요)
+4) Be honest about unreadable text — say so explicitly.
+5) Non-menu replies: 6-12 lines. Menu replies: no length limit.
+6) Last line: a short useful local-language phrase the user can speak, prefixed with 💬. Show pronunciation if helpful. Then translate to {REPLY_LANG}. (Example for KO user: 💬 これをください (kore wo kudasai) — 이거 주세요)
 
-[ Follow-up 질문 원칙 ]
-- 같은 사진에 대한 추가 질문은 2~6줄로 짧고 구체적으로.
-- 사진에서 확인 불가능한 건 "사진에서는 보이지 않음" 이라고 솔직히 말하고 일반 상식으로 보충.
-- 필요 시 현지어 한 문장을 💬 로 덧붙인다.`;
+[ FOLLOW-UP messages ]
+- Stay short (2-6 lines), specific.
+- If something can't be seen in the photo, say so plainly and supplement with general knowledge.
+- Add a 💬 phrase if the user is going to act on the info.
+
+Quality bar: if the photo is too blurry to read at all, reply ONLY with the literal token "BLURRY_RETAKE" (no punctuation, no other text). The client will offer a free retake.`;
 
 const MODE_HINT: Record<Mode, string> = {
-  auto: "사진 종류와 언어를 먼저 판별해서 그에 맞게 설명해라. 메뉴판으로 판별되면 시스템 프롬프트의 메뉴판 규칙을 반드시 따라 모든 항목을 표로 전부 나열할 것.",
-  menu: "이 사진은 메뉴판이다. 시스템 프롬프트의 메뉴판 규칙을 반드시 지켜라 — 보이는 메뉴 항목을 하나도 빼지 말고 마크다운 표로 전부 나열할 것. 요약 금지, 생략 금지.",
-  sign: "이 사진은 간판/표지판이다. 어떤 장소/시설인지와 영업시간·유의사항에 집중해라.",
-  product:
-    "이 사진은 상품 패키지/라벨이다. 맛·원재료·알레르기·조리법에 집중해라.",
+  auto: "Detect type and source language first. If it's a menu, follow the MENU rule strictly: every item, full table, no omissions.",
+  menu: "This is a MENU. Follow the MENU rule strictly: every item visible, complete markdown table, no summarizing.",
+  sign: "This is a sign or notice. Focus on what kind of place/facility, hours, and any cautions.",
+  product: "This is a product package/label. Focus on taste, ingredients, allergens, and how to use/prepare.",
 };
 
 export async function POST(req: NextRequest) {
@@ -135,9 +136,21 @@ export async function POST(req: NextRequest) {
     });
 
     const text =
-      response.choices[0]?.message?.content?.trim() ?? "답변을 만들지 못했어요.";
+      response.choices[0]?.message?.content?.trim() ?? "";
 
-    const res = NextResponse.json({ text, quota: quota.info });
+    // 블러 감지: AI가 "BLURRY_RETAKE" 토큰만 보냈으면 quota 차감 안 하고 재시도 안내
+    if (text === "BLURRY_RETAKE" || text.startsWith("BLURRY_RETAKE")) {
+      const refundedRes = NextResponse.json(
+        { error: "BLURRY_RETAKE", quota: quota.info, refunded: true },
+        { status: 422 }
+      );
+      // count 증가 없이 현재 상태 그대로 재서명 (사실상 환불)
+      writeQuota(refundedRes, quota.current);
+      return refundedRes;
+    }
+
+    const finalText = text || "Couldn't generate a reply.";
+    const res = NextResponse.json({ text: finalText, quota: quota.info });
     writeQuota(res, quota.next);
     return res;
   } catch (e: unknown) {
