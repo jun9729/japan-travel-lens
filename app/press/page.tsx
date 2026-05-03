@@ -40,7 +40,7 @@ export default function Press() {
         <li><strong>Tech:</strong> Next.js 16 · GPT-4o Vision · PayPal · Vercel</li>
         <li><strong>UI languages:</strong> Korean · English · Japanese · Chinese</li>
         <li><strong>Source language coverage:</strong> 50+ foreign languages auto-detected</li>
-        <li><strong>Pricing:</strong> 10 free scans/day. $1 (₩1,500 / ¥150 / €1) for 24-hour unlimited. No subscription.</li>
+        <li><strong>Pricing:</strong> 10 free scans/day. $1 USD (single global price) for 24-hour unlimited. No subscription.</li>
         <li><strong>Privacy:</strong> No accounts. No tracking. Photos sent to OpenAI for analysis only.</li>
       </ul>
 

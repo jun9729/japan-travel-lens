@@ -37,6 +37,12 @@ function todayKST(): string {
 function getSecret(): string {
   const s = process.env.QUOTA_SECRET;
   if (!s || s.length < 16) {
+    // 프로덕션에서 시크릿 누락은 quota 우회 가능 → 즉시 throw 로 차단
+    if (process.env.NODE_ENV === "production" || process.env.VERCEL_ENV === "production") {
+      throw new Error(
+        "QUOTA_SECRET is missing or too short in production. Set a >=16-char secret in Vercel env vars."
+      );
+    }
     return "dev-insecure-quota-secret-please-set-QUOTA_SECRET";
   }
   return s;

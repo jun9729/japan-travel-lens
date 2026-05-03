@@ -562,6 +562,8 @@ function PageInner({ paypalId }: { paypalId: string | null }) {
           msg = tt.errQuotaExhausted(quota?.limit ?? 10, price);
         } else if (code === "IMAGE_EMPTY") {
           msg = tt.errImageEmpty;
+        } else if (code === "IMAGE_TOO_LARGE") {
+          msg = tt.errImageEmpty; // 사용자 입장에선 "다시 찍어주세요" 동의어
         } else if (code === "OPENAI_MISSING") {
           msg = tt.errOpenAIMissing;
         } else if (code === "AI_FAILED") {

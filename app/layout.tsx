@@ -8,10 +8,11 @@ const SITE_URL = "https://japan-travel-lens.vercel.app";
 
 function pickLang(acceptLang: string | null): "ko" | "en" | "ja" | "zh" {
   const raw = (acceptLang ?? "").toLowerCase();
-  if (raw.startsWith("ko")) return "ko";
+  if (raw.startsWith("en")) return "en";
   if (raw.startsWith("ja")) return "ja";
   if (raw.startsWith("zh")) return "zh";
-  return "en";
+  // 기본값: ko (1차 타겟 시장이 한국, Naver/Daum 봇은 Accept-Language 미전송 케이스 多)
+  return "ko";
 }
 
 export const metadata: Metadata = {
@@ -178,7 +179,7 @@ const FAQ_JSONLD = {
       acceptedAnswer: {
         "@type": "Answer",
         text:
-          "10 scans per day are free. For unlimited 24-hour use, $1 USD via PayPal (regional pricing: ₩1,500 KRW, ¥150 JPY, €1 EUR). One-time payment, no auto-renewal.",
+          "10 scans per day are free. For 24h unlimited use, a single global price of $1 USD via PayPal — one-time payment, no auto-renewal.",
       },
     },
     {

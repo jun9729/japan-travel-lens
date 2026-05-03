@@ -52,8 +52,8 @@ export default function About() {
         <li><strong>Never</strong> auto-renews. <strong>Never</strong> stores your card. <strong>Never</strong> charges again unless you tap the button again.</li>
       </ul>
       <p>
-        Regional pricing: ₩1,500 (KR) / ¥150 (JP) / €1 (EU) / $1 (US default).
-        Refund within 24h if you didn&apos;t use it — just email and include your order ID.
+        Single global price: <strong>$1 USD</strong> (charged via PayPal).
+        Refund within 24h if you didn&apos;t use it — just email with your order ID.
       </p>
 
       <h2>Honest limitations</h2>

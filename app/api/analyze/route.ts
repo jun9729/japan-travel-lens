@@ -86,6 +86,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 서버 측 이미지 크기 제한 — base64 dataURL 의 raw 길이 기준 (~3MB).
+    // 1280px JPEG 0.82 는 보통 200-400KB 라 정상 사용은 안 걸림.
+    // 적대적 사용자가 거대한 이미지로 OpenAI 비용 폭발시키는 경우 차단.
+    const MAX_IMAGE_BYTES = 3 * 1024 * 1024; // 3MB
+    if (image.length > MAX_IMAGE_BYTES) {
+      return NextResponse.json(
+        { code: "IMAGE_TOO_LARGE" },
+        { status: 413 }
+      );
+    }
+
     // 쿼터 체크
     const quota = tryConsume(req);
     if (!quota.ok) {

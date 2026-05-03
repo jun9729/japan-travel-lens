@@ -2,10 +2,11 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "여행 렌즈",
-    short_name: "여행렌즈",
+    // 한국이 1차 시장이지만 글로벌 사용자 홈화면에서 브랜드 인식 가능하도록 영문 병기
+    name: "Travel Lens · 여행 렌즈",
+    short_name: "Travel Lens",
     description:
-      "카메라로 찍으면 AI가 외국어 간판·메뉴판·상품을 한국어로 설명해주는 여행 도우미",
+      "Point your phone at any foreign-language sign, menu, or product. AI explains it in your language. 카메라로 외국어를 찍으면 AI가 풀어줘요.",
     start_url: "/",
     display: "standalone",
     background_color: "#0b0b0f",
@@ -13,6 +14,7 @@ export default function manifest(): MetadataRoute.Manifest {
     orientation: "portrait",
     categories: ["travel", "utilities", "productivity"],
     lang: "ko",
+    dir: "ltr",
     icons: [
       { src: "/icon", sizes: "192x192", type: "image/png", purpose: "any" },
       {
