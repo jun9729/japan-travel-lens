@@ -8,6 +8,14 @@ export const metadata = {
 
 const POSTS = [
   {
+    slug: "korean-menu-guide-2026",
+    title: "How to read a Korean menu in 2026 (Hangul beginner's guide)",
+    excerpt:
+      "30 essential Korean food words for travelers — Korean BBQ, stews, street food, banchan side dishes. Plus AI camera shortcut for everything else.",
+    date: "2026-05-06",
+    lang: "EN",
+  },
+  {
     slug: "best-menu-translator-app-2026",
     title: "The best menu translator app for travelers in 2026 (tested 6 tools)",
     excerpt:
