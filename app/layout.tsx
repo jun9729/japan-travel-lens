@@ -8,11 +8,11 @@ const SITE_URL = "https://japan-travel-lens.vercel.app";
 
 function pickLang(acceptLang: string | null): "ko" | "en" | "ja" | "zh" {
   const raw = (acceptLang ?? "").toLowerCase();
-  if (raw.startsWith("en")) return "en";
+  if (raw.startsWith("ko")) return "ko";
   if (raw.startsWith("ja")) return "ja";
   if (raw.startsWith("zh")) return "zh";
-  // 기본값: ko (1차 타겟 시장이 한국, Naver/Daum 봇은 Accept-Language 미전송 케이스 多)
-  return "ko";
+  // 기본값: en (1차 타겟이 영어권 여행자 — Googlebot/Bingbot 등 대다수 영문 폴백)
+  return "en";
 }
 
 export const metadata: Metadata = {
@@ -22,26 +22,30 @@ export const metadata: Metadata = {
     template: "%s · Travel Lens",
   },
   description:
-    "Point your phone at any foreign-language menu, sign, or product label. AI translates the entire menu as a table and answers follow-up questions. 10 free scans/day. No signup. Works in Korean, English, Japanese, Chinese, and reads 50+ languages.",
+    "Travel Lens is an AI camera translator for travelers. Snap a foreign-language menu, sign, or product label — get the full menu as a table, plus follow-up Q&A about allergens, spice level, and recommendations. Powered by GPT-4o Vision. 10 free scans/day, no signup. $1 unlocks 24h unlimited.",
   applicationName: "Travel Lens",
   authors: [{ name: "Jun Lee", url: SITE_URL }],
   creator: "Jun Lee",
   publisher: "Travel Lens",
   keywords: [
-    // EN
-    "travel translator", "menu translator", "AI camera translator",
-    "foreign menu app", "GPT-4o vision", "japanese menu reader",
-    "korean sign translator", "real-time translation app",
-    // KO
-    "여행 번역", "메뉴판 번역", "일본 메뉴 번역", "외국어 번역 앱",
-    "여행 카메라 번역", "AI 번역 앱", "여행 필수 앱",
-    "도쿄 여행 메뉴", "방콕 여행 번역",
-    // JA
+    // EN — primary audience
+    "travel translator app", "menu translator app", "AI camera translator",
+    "japanese menu translator", "korean menu translator", "thai menu translator",
+    "translate menu with camera", "translate sign with camera",
+    "GPT-4o vision app", "foreign menu reader", "real-time translation app",
+    "best travel translation app 2026", "free menu translator",
+    "iphone menu translator", "android menu translator",
+    "translate japanese restaurant menu", "japan travel apps 2026",
+    "korea travel apps 2026", "solo travel translator",
+    "google lens alternative menu", "papago alternative menu",
+    "deepL camera alternative", "menu translator gpt",
+    "what does this say in japanese", "what does this menu mean",
+    // JA secondary
     "メニュー 翻訳", "看板 翻訳", "AI 翻訳 カメラ", "海外旅行 翻訳",
-    "韓国 メニュー", "中国語 メニュー",
-    // ZH
+    // ZH secondary
     "菜单翻译", "招牌翻译", "AI 拍照翻译", "旅行翻译",
-    "日语菜单", "韩语菜单",
+    // KO secondary
+    "여행 번역", "메뉴판 번역", "일본 메뉴 번역", "AI 번역 앱",
   ],
   alternates: {
     canonical: SITE_URL,
@@ -62,9 +66,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: SITE_URL,
-    title: "Travel Lens — AI explains foreign menus, signs, and product labels",
+    title: "Travel Lens — Snap a foreign menu, AI explains it (free)",
     description:
-      "Point camera at foreign text. AI translates menus as a table, explains signs, decodes product labels. 10 free scans/day, no signup.",
+      "GPT-4o Vision turns any foreign-language menu into a clean table with allergen notes. Ask follow-ups: 'is this spicy?', 'vegetarian options?'. Works on Japanese, Korean, Thai, Vietnamese, Spanish menus. No signup, 10 free scans/day, $1 unlimited.",
     siteName: "Travel Lens",
     locale: "en_US",
     alternateLocale: ["ko_KR", "ja_JP", "zh_CN"],
@@ -79,9 +83,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Travel Lens — AI translates anything you photograph",
+    title: "Travel Lens — Snap a foreign menu, AI explains it",
     description:
-      "Foreign menu? Foreign sign? Snap and AI explains. Menus → tables. Follow-up Q&A. 10 free / day.",
+      "Point camera at any foreign menu. Get the full menu as a table + ask follow-ups (allergens, spice). 10 free/day. No signup.",
     images: ["/opengraph-image"],
   },
   robots: {

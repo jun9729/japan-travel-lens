@@ -8,11 +8,35 @@ export const metadata = {
 
 const POSTS = [
   {
+    slug: "best-menu-translator-app-2026",
+    title: "The best menu translator app for travelers in 2026 (tested 6 tools)",
+    excerpt:
+      "Hands-on comparison of menu translation apps for travelers — Google Lens, Papago, Yomiwa, Waygo, ChatGPT, and Travel Lens. Actual screenshots from a Tokyo izakaya menu.",
+    date: "2026-05-04",
+    lang: "EN",
+  },
+  {
+    slug: "translate-japanese-menu-iphone-2026",
+    title: "How to translate a Japanese menu on iPhone (the fast way, 2026)",
+    excerpt:
+      "Three methods to translate Japanese restaurant menus with your iPhone — built-in Translate app, Google Lens via Camera, and the AI camera approach. Which one wins for sit-down dining.",
+    date: "2026-05-05",
+    lang: "EN",
+  },
+  {
     slug: "japanese-menu-reading-guide-2026",
     title: "How to read a Japanese menu in 2026 (a 5-minute guide)",
     excerpt:
       "Decode kanji + hiragana on izakaya, ramen, and sushi menus. The 30 most common food kanji every traveler should know — plus how AI handles the rest.",
     date: "2026-05-01",
+    lang: "EN",
+  },
+  {
+    slug: "menu-translation-apps-compared-2026",
+    title: "Menu translation apps compared: Google Lens vs Papago vs Travel Lens (2026)",
+    excerpt:
+      "Honest comparison of the three popular tools for translating restaurant menus while traveling. Strengths, weaknesses, and which to use when.",
+    date: "2026-05-03",
     lang: "EN",
   },
   {
@@ -22,14 +46,6 @@ const POSTS = [
       "도쿄·오사카 라멘집·이자카야 메뉴 한자 5개만 알면 절반은 됩니다. 나머지는 AI가 카메라로 풀어줘요. 일본 여행 가시기 전에 한 번 보세요.",
     date: "2026-05-02",
     lang: "KO",
-  },
-  {
-    slug: "menu-translation-apps-compared-2026",
-    title: "Menu translation apps compared: Google Lens vs Papago vs Travel Lens (2026)",
-    excerpt:
-      "Honest comparison of the three popular tools for translating restaurant menus while traveling. Strengths, weaknesses, and which to use when.",
-    date: "2026-05-03",
-    lang: "EN",
   },
 ];
 
