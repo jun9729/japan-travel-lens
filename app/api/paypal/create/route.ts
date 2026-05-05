@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PAYPAL_BASE, getPayPalAccessToken, paypalConfigured } from "@/lib/paypal";
 import { getPriceForCountry } from "@/lib/pricing";
+import { track } from "@/lib/track";
 
 export const runtime = "nodejs";
 
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
+    track("pay_create", req, { orderID: order.id });
     return NextResponse.json({ orderID: order.id });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

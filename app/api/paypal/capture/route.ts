@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { markPaid, writeQuota } from "@/lib/quota";
 import { PAYPAL_BASE, getPayPalAccessToken, paypalConfigured } from "@/lib/paypal";
+import { track } from "@/lib/track";
 
 export const runtime = "nodejs"; // quota HMAC 서명이 Node crypto 사용
 
@@ -27,16 +28,18 @@ export async function POST(req: NextRequest) {
     console.log("[paypal] capture", { orderID, status: order.status });
 
     if (order.status !== "COMPLETED") {
+      track("pay_failed", req, { orderID, status: order.status });
       return NextResponse.json(
         {
           error: `PayPal status: ${order.status ?? "unknown"}`,
-          orderID, // 클라가 사용자에게 보여줄 수 있게
+          orderID,
           recoverable: true,
         },
         { status: 400 }
       );
     }
 
+    track("pay_capture", req, { orderID });
     const nextPayload = markPaid(req);
     const res = NextResponse.json({ ok: true, orderID });
     writeQuota(res, nextPayload);

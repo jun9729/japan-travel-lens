@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import type { ChatCompletionMessageParam } from "openai/resources/chat/completions";
 import { tryConsume, writeQuota } from "@/lib/quota";
+import { track } from "@/lib/track";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -100,6 +101,7 @@ export async function POST(req: NextRequest) {
     // 쿼터 체크
     const quota = tryConsume(req);
     if (!quota.ok) {
+      track("scan_quota_block", req);
       const res = NextResponse.json(
         {
           code: "QUOTA_EXHAUSTED",
@@ -111,6 +113,7 @@ export async function POST(req: NextRequest) {
       writeQuota(res, quota.next);
       return res;
     }
+    track("scan_attempt", req, { mode, uiLang, isPaid: quota.info.isPaid });
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -159,6 +162,7 @@ export async function POST(req: NextRequest) {
 
     // 블러 감지 — exact match 만 (정상 응답이 BLURRY_RETAKE 로 시작해도 무시)
     if (text === "BLURRY_RETAKE") {
+      track("scan_blurry", req);
       const refundedRes = NextResponse.json(
         { code: "BLURRY_RETAKE", quota: quota.info, refunded: true },
         { status: 422 }
@@ -167,6 +171,7 @@ export async function POST(req: NextRequest) {
       return refundedRes;
     }
 
+    track("scan_success", req, { len: text.length });
     const finalText = text || "Couldn't generate a reply.";
     const res = NextResponse.json({ text: finalText, quota: quota.info });
     writeQuota(res, quota.next);
@@ -177,6 +182,7 @@ export async function POST(req: NextRequest) {
       e instanceof Error &&
       (e.name === "AbortError" || (e as Error & { code?: string }).code === "ABORT_ERR")
     ) {
+      track("scan_aborted", req);
       return new Response(null, { status: 499 });
     }
     const detail = e instanceof Error ? e.message : String(e);
